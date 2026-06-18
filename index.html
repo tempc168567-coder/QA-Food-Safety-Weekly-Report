@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>品保處安心食報</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- 頂部導覽 -->
+  <header>
+    <div class="header-inner">
+      <div class="logo-area">
+        <img class="logo-icon" src="chimei-logo.png" alt="奇美食品" />
+        <div class="logo-text">
+          <span class="dept">品保處</span>
+          <span class="title">安心食報</span>
+        </div>
+      </div>
+      <nav>
+        <ul>
+          <li><a href="#" class="active" data-page="home">首頁</a></li>
+          <li><a href="#" data-page="news">食安新聞</a></li>
+          <li><a href="#" data-page="inspection">稽查報告</a></li>
+          <li><a href="#" data-page="tips">食安知識</a></li>
+          <li><a href="#" data-page="recall">下架召回</a></li>
+          <li><a href="#" data-page="contact">聯絡我們</a></li>
+        </ul>
+      </nav>
+      <div class="header-date" id="headerDate"></div>
+    </div>
+  </header>
+
+  <!-- 主要內容容器 -->
+  <main id="mainContent">
+
+    <!-- ===== 首頁 ===== -->
+    <section id="page-home" class="page active">
+      <!-- 英雄橫幅 -->
+      <div class="hero">
+        <div class="hero-overlay">
+          <h2>守護餐桌上的每一口安全</h2>
+          <p>品保處致力於食品安全稽查、風險評估與資訊透明，讓您吃得安心、放心</p>
+          <div class="hero-stats">
+            <div class="stat"><span id="statInspect">1,248</span><label>本年稽查件數</label></div>
+            <div class="stat"><span id="statPass">96.4%</span><label>合格率</label></div>
+            <div class="stat"><span id="statRecall">12</span><label>本月下架品項</label></div>
+            <div class="stat"><span id="statTips">86</span><label>食安知識篇</label></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 最新公告跑馬燈 -->
+      <div class="marquee-bar">
+        <span class="marquee-label">最新公告</span>
+        <div class="marquee-track">
+          <span class="marquee-content" id="marqueeText"></span>
+        </div>
+      </div>
+
+      <!-- 主要內容格 -->
+      <div class="content-grid">
+
+        <!-- 左側：最新消息 -->
+        <div class="card-section">
+          <div class="section-header"><span class="dot red"></span>最新食安訊息</div>
+          <ul class="news-list" id="latestNewsList"></ul>
+          <button class="more-btn" onclick="goPage('news')">查看更多 &rsaquo;</button>
+        </div>
+
+        <!-- 中間：稽查快報 -->
+        <div class="card-section">
+          <div class="section-header"><span class="dot blue"></span>稽查快報</div>
+          <div class="inspection-summary" id="inspectionSummary"></div>
+          <button class="more-btn" onclick="goPage('inspection')">查看更多 &rsaquo;</button>
+        </div>
+
+        <!-- 右側：食安知識卡 -->
+        <div class="card-section">
+          <div class="section-header"><span class="dot green"></span>本週食安知識</div>
+          <div class="tip-card" id="tipCard"></div>
+          <button class="more-btn" onclick="goPage('tips')">查看更多 &rsaquo;</button>
+        </div>
+
+      </div>
+
+      <!-- 下架召回警示 -->
+      <div class="recall-banner">
+        <div class="recall-header">
+          <span>&#9888; 近期下架 / 召回警示</span>
+          <button class="more-btn-white" onclick="goPage('recall')">全部清單</button>
+        </div>
+        <div class="recall-list" id="homeRecallList"></div>
+      </div>
+
+    </section>
+
+    <!-- ===== 食安新聞 ===== -->
+    <section id="page-news" class="page">
+      <div class="page-title">食安新聞</div>
+
+      <!-- 即時抓取列 -->
+      <div class="live-fetch-bar">
+        <div class="live-fetch-info">
+          <span class="live-pulse-dot"></span>
+          即時從 <strong id="feedCount"></strong> 個媒體來源抓取近 <strong>7日</strong> 食品安全新聞
+        </div>
+        <button class="live-fetch-btn" id="liveFetchBtn" onclick="fetchLiveNews(true)">
+          <span class="lf-icon">📡</span>
+          <span class="lf-spinner" style="display:none">⏳</span>
+          <span class="lf-text">更新近7日食安新聞</span>
+        </button>
+      </div>
+
+      <!-- 即時新聞結果區 -->
+      <div id="liveNewsSection" style="display:none">
+        <div class="live-news-header">
+          <div class="live-news-header-left">
+            <span class="live-tag">LIVE</span>
+            <span id="liveNewsTitle">即時抓取結果</span>
+          </div>
+          <div class="live-news-header-right">
+            <span id="liveFetchTime"></span>
+            <button class="close-live-btn" onclick="closeLiveNews()">✕</button>
+          </div>
+        </div>
+        <div class="live-status-row" id="liveFetchStatus"></div>
+        <div class="news-grid" id="liveNewsGrid"></div>
+        <div id="liveEmpty" class="live-empty" style="display:none"></div>
+      </div>
+
+      <!-- 來源目錄 -->
+      <div class="source-directory-wrap">
+        <div class="source-dir-label">新聞來源</div>
+        <div class="source-dir-groups">
+          <div class="source-dir-group">
+            <span class="source-group-title">國內媒體</span>
+            <div class="source-dir-cards" id="sourceDomestic"></div>
+          </div>
+          <div class="source-dir-group">
+            <span class="source-group-title">國際媒體</span>
+            <div class="source-dir-cards" id="sourceInternational"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 關鍵字搜尋 -->
+      <div class="tips-search">
+        <input type="text" id="newsSearch" placeholder="搜尋新聞標題或摘要…" oninput="filterNews()" />
+      </div>
+
+      <!-- 篩選列：類別 + 來源 -->
+      <div class="filter-wrap">
+        <div class="filter-row">
+          <span class="filter-label">類別</span>
+          <div class="filter-bar" id="catFilterBar">
+            <button class="filter-btn active" data-cat="all">全部</button>
+            <button class="filter-btn" data-cat="domestic">國內</button>
+            <button class="filter-btn" data-cat="international">國際</button>
+            <button class="filter-btn" data-cat="policy">政策法規</button>
+          </div>
+        </div>
+        <div class="filter-row">
+          <span class="filter-label">來源</span>
+          <div class="filter-bar" id="sourceFilterBar">
+            <button class="source-filter-btn active" data-src="all">全部</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="news-result-count" id="newsResultCount"></div>
+      <div class="news-grid" id="newsGrid"></div>
+    </section>
+
+    <!-- ===== 稽查報告 ===== -->
+    <section id="page-inspection" class="page">
+      <div class="page-title">稽查報告</div>
+      <div class="inspection-controls">
+        <select id="inspectionYear">
+          <option value="2026">2026年</option>
+          <option value="2025">2025年</option>
+        </select>
+        <select id="inspectionMonth">
+          <option value="all">全部月份</option>
+          <option value="1">1月</option><option value="2">2月</option>
+          <option value="3">3月</option><option value="4">4月</option>
+          <option value="5">5月</option><option value="6">6月</option>
+        </select>
+        <select id="inspectionType">
+          <option value="all">全部類別</option>
+          <option value="restaurant">餐廳/小吃</option>
+          <option value="factory">食品工廠</option>
+          <option value="market">傳統市場</option>
+          <option value="supermarket">超市/量販</option>
+        </select>
+      </div>
+      <div class="inspection-table-wrapper">
+        <table class="inspection-table" id="inspectionTable">
+          <thead>
+            <tr>
+              <th>稽查日期</th><th>業者名稱</th><th>類別</th>
+              <th>稽查項目</th><th>結果</th><th>處分</th>
+            </tr>
+          </thead>
+          <tbody id="inspectionBody"></tbody>
+        </table>
+      </div>
+      <div class="chart-row">
+        <div class="chart-box">
+          <div class="chart-title">各類業者合格率</div>
+          <canvas id="passChart" width="340" height="220"></canvas>
+        </div>
+        <div class="chart-box">
+          <div class="chart-title">月份稽查件數趨勢</div>
+          <canvas id="trendChart" width="340" height="220"></canvas>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== 食安知識 ===== -->
+    <section id="page-tips" class="page">
+      <div class="page-title">食安知識庫</div>
+      <div class="tips-search">
+        <input type="text" id="tipsSearch" placeholder="搜尋知識關鍵字…" oninput="filterTips()" />
+      </div>
+      <div class="tips-categories" id="tipsCategories"></div>
+      <div class="tips-grid" id="tipsGrid"></div>
+    </section>
+
+    <!-- ===== 下架召回 ===== -->
+    <section id="page-recall" class="page">
+      <div class="page-title">下架 / 召回公告</div>
+      <div class="recall-info-bar">
+        <span>&#9888; 如您購買以下產品，請勿食用，並可憑購買憑證至原購買地點辦理退換貨。</span>
+      </div>
+
+      <!-- 資料來源說明 -->
+      <div class="recall-source-box">
+        <div class="rsb-title">&#128196; 資料來源說明</div>
+        <p>本頁公告資料彙整自下列政府機關之官方公告，品保處依據各機關發布之公文進行登錄與追蹤管理：</p>
+        <ul class="rsb-list">
+          <li>
+            <span class="rsb-badge gov">衛福部</span>
+            <strong>衛生福利部食品藥物管理署（TFDA）</strong>—
+            食品回收、下架及停售公告
+            <a href="https://www.fda.gov.tw/TC/siteListContent.aspx?sid=4" target="_blank" rel="noopener noreferrer" class="rsb-link">前往官網 &#8599;</a>
+          </li>
+          <li>
+            <span class="rsb-badge gov">農業部</span>
+            <strong>農業部農產品安全追溯平台</strong>—
+            農產品農藥殘留不合格下架公告
+            <a href="https://qr.afa.gov.tw/" target="_blank" rel="noopener noreferrer" class="rsb-link">前往官網 &#8599;</a>
+          </li>
+          <li>
+            <span class="rsb-badge gov">經濟部</span>
+            <strong>經濟部標準檢驗局</strong>—
+            輸入食品不符規定退運或銷毀公告
+            <a href="https://www.bsmi.gov.tw/" target="_blank" rel="noopener noreferrer" class="rsb-link">前往官網 &#8599;</a>
+          </li>
+          <li>
+            <span class="rsb-badge internal">品保處</span>
+            <strong>本公司品保處內部稽查</strong>—
+            依廠內自主管理及客訴追蹤發現之問題品項
+          </li>
+        </ul>
+        <p class="rsb-note">&#9432; 本頁資料為示範用途，實際公告以各機關官方平台為準。如需查詢最新下架資訊，請直接至上列官網確認。</p>
+      </div>
+
+      <div class="recall-full-list" id="recallFullList"></div>
+    </section>
+
+    <!-- ===== 聯絡我們 ===== -->
+    <section id="page-contact" class="page">
+      <div class="page-title">聯絡我們</div>
+      <div class="contact-wrapper">
+        <div class="contact-info">
+          <h3>品保處</h3>
+          <p><strong>地址：</strong>高雄市湖內區公舘里中山路二段51號</p>
+          <p><strong>電話：</strong>07-6993901 #16151</p>
+          <p><strong>電子信箱：</strong>tsuiting@chimeifood.com.tw</p>
+          <p><strong>服務時間：</strong>週一至週五 08:30–16:30</p>
+        </div>
+        <form class="contact-form" id="contactForm" onsubmit="submitForm(event)">
+          <h3>線上意見回饋</h3>
+          <label>姓名 <input type="text" name="name" placeholder="請輸入姓名" required /></label>
+          <label>電子信箱 <input type="email" name="email" placeholder="請輸入電子信箱" required /></label>
+          <label>主旨
+            <select name="subject">
+              <option>食安申訴</option>
+              <option>業者檢舉</option>
+              <option>資料查詢</option>
+              <option>其他</option>
+            </select>
+          </label>
+          <label>內容 <textarea name="message" rows="5" placeholder="請輸入您的意見或問題…" required></textarea></label>
+          <button type="submit" class="submit-btn">送出</button>
+          <div id="formMsg" class="form-msg"></div>
+        </form>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- 頁尾 -->
+  <footer>
+    <div class="footer-inner">
+      <div>
+        <strong>品保處安心食報</strong><br/>
+        本網站資訊僅供參考，正式法律效力以公告為準。
+      </div>
+      <div class="footer-links">
+        <a href="#">隱私政策</a>
+        <a href="#">無障礙說明</a>
+        <a href="#">網站地圖</a>
+        <a href="#">政府資料開放平臺</a>
+      </div>
+      <div class="footer-copy">&copy; 2026 品保處 版權所有</div>
+    </div>
+  </footer>
+
+  <script src="data.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
