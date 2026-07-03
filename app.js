@@ -12,10 +12,15 @@ document.addEventListener('DOMContentLoaded', () => {
   initCatFilterBtns();
   initSourceFilterBtns();
   renderInspectionTable();
+  initInspectionFilters();
+  initBorder();
   drawCharts();
   renderTips('all');
   renderTipCategories();
   renderRecallFull();
+  // 顯示實際 RSS 來源數量（RSS_FEEDS 在此時已定義）
+  const fc = document.getElementById('feedCount');
+  if (fc) fc.textContent = RSS_FEEDS.length;
 });
 
 // ===== 日期 =====
@@ -113,8 +118,11 @@ function renderSourceDirectory() {
   const intlEl     = document.getElementById('sourceInternational');
   if (!domesticEl || !intlEl) return;
 
+  const sourceCounts = {};
+  NEWS_DATA.forEach(n => { sourceCounts[n.source] = (sourceCounts[n.source] || 0) + 1; });
+
   Object.entries(SOURCES).forEach(([key, s]) => {
-    const count = NEWS_DATA.filter(n => n.source === key).length;
+    const count = sourceCounts[key] || 0;
     const card = document.createElement('a');
     card.className = 'source-dir-card';
     card.href = s.url;
@@ -134,6 +142,12 @@ function renderSourceDirectory() {
 // ===== 食安新聞 =====
 let activeCat = 'all';
 let activeSrc = 'all';
+let newsQuery = '';
+
+function filterNews() {
+  newsQuery = (document.getElementById('newsSearch')?.value || '').toLowerCase().trim();
+  renderNewsGrid();
+}
 
 function renderNewsGrid() {
   const grid = document.getElementById('newsGrid');
@@ -143,7 +157,8 @@ function renderNewsGrid() {
   const list = NEWS_DATA.filter(n => {
     const matchCat = activeCat === 'all' || n.cat === activeCat;
     const matchSrc = activeSrc === 'all' || n.source === activeSrc;
-    return matchCat && matchSrc;
+    const matchQ = !newsQuery || n.title.toLowerCase().includes(newsQuery) || n.summary.toLowerCase().includes(newsQuery);
+    return matchCat && matchSrc && matchQ;
   });
 
   if (countEl) countEl.textContent = `共 ${list.length} 則新聞`;
@@ -203,20 +218,37 @@ function initSourceFilterBtns() {
     bar.appendChild(btn);
   });
 
-  // 「全部」按鈕事件
-  bar.querySelector('[data-src="all"]').addEventListener('click', () => {
+  // FIX #4：「全部」按鈕改用 onclick 指定，避免多次初始化時重複綁定
+  const allBtn = bar.querySelector('[data-src="all"]');
+  allBtn.onclick = () => {
     document.querySelectorAll('#sourceFilterBar .source-filter-btn').forEach(b => b.classList.remove('active'));
-    bar.querySelector('[data-src="all"]').classList.add('active');
+    allBtn.classList.add('active');
     activeSrc = 'all';
     renderNewsGrid();
-  });
+  };
 }
 
 // ===== 稽查報告 =====
 function renderInspectionTable() {
   const tbody = document.getElementById('inspectionBody');
+  const year  = document.getElementById('inspectionYear')?.value  || 'all';
+  const month = document.getElementById('inspectionMonth')?.value || 'all';
+  const type  = document.getElementById('inspectionType')?.value  || 'all';
+
+  const list = INSPECTION_DATA.filter(r => {
+    const [y, m] = r.date.split('-');
+    const matchY = year  === 'all' || y === year;
+    const matchM = month === 'all' || parseInt(m, 10) === parseInt(month, 10);
+    const matchT = type  === 'all' || r.type === type;
+    return matchY && matchM && matchT;
+  });
+
   tbody.innerHTML = '';
-  INSPECTION_DATA.forEach(r => {
+  if (list.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#a0aec0;padding:24px">無符合條件的稽查記錄</td></tr>';
+    return;
+  }
+  list.forEach(r => {
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td>${r.date}</td>
@@ -225,6 +257,101 @@ function renderInspectionTable() {
       <td>${r.items}</td>
       <td><span class="badge badge-${r.result}">${resultLabel(r.result)}</span></td>
       <td>${r.action}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+function initInspectionFilters() {
+  ['inspectionYear', 'inspectionMonth', 'inspectionType'].forEach(id => {
+    document.getElementById(id)?.addEventListener('change', renderInspectionTable);
+  });
+}
+
+// ===== 邊境查驗 =====
+function initBorder() {
+  const monthSel = document.getElementById('borderMonth');
+  const catSel   = document.getElementById('borderCategory');
+  if (!monthSel || !catSel || typeof BORDER_DATA === 'undefined') return;
+
+  // 月份下拉：由資料中的月份去重，由新到舊，預設最新月份
+  const months = [...new Set(BORDER_DATA.map(r => r.month))].sort((a, b) => b - a);
+  monthSel.innerHTML = months
+    .map((m, i) => `<option value="${m}"${i === 0 ? ' selected' : ''}>${m}月${i === 0 ? '（最新）' : ''}</option>`)
+    .join('');
+
+  // 類別下拉：依出現次數排序
+  const catCount = {};
+  BORDER_DATA.forEach(r => { catCount[r.category] = (catCount[r.category] || 0) + 1; });
+  const cats = Object.keys(catCount).sort((a, b) => catCount[b] - catCount[a]);
+  catSel.innerHTML = '<option value="all">全部類別</option>' +
+    cats.map(c => `<option value="${escHtml(c)}">${escHtml(c)}</option>`).join('');
+
+  monthSel.addEventListener('change', renderBorderTable);
+  catSel.addEventListener('change', renderBorderTable);
+  renderBorderTable();
+}
+
+function borderCatColor(cat) {
+  return (typeof BORDER_CAT_COLORS !== 'undefined' && BORDER_CAT_COLORS[cat]) || '#718096';
+}
+
+function renderBorderStats(monthRows, month) {
+  const el = document.getElementById('borderStats');
+  if (!el) return;
+  if (monthRows.length === 0) {
+    el.innerHTML = `<div class="bstat"><span class="bstat-num">0</span><label>${month}月不符合筆數</label></div>`;
+    return;
+  }
+  const tally = (key) => {
+    const m = {};
+    monthRows.forEach(r => { m[r[key]] = (m[r[key]] || 0) + 1; });
+    return Object.entries(m).sort((a, b) => b[1] - a[1])[0];
+  };
+  const topCountry = tally('country');
+  const topCat     = tally('category');
+  const countries  = new Set(monthRows.map(r => r.country)).size;
+  el.innerHTML = `
+    <div class="bstat"><span class="bstat-num">${monthRows.length}</span><label>${month}月不符合筆數</label></div>
+    <div class="bstat"><span class="bstat-num">${countries}</span><label>涉及來源國</label></div>
+    <div class="bstat"><span class="bstat-num">${escHtml(topCountry[0])}</span><label>最多來源國（${topCountry[1]}筆）</label></div>
+    <div class="bstat"><span class="bstat-num" style="color:${borderCatColor(topCat[0])}">${escHtml(topCat[0])}</span><label>最多違規類別（${topCat[1]}筆）</label></div>
+  `;
+}
+
+function renderBorderTable() {
+  const tbody = document.getElementById('borderBody');
+  if (!tbody) return;
+  const month = parseInt(document.getElementById('borderMonth').value, 10);
+  const cat   = document.getElementById('borderCategory').value;
+  const query = (document.getElementById('borderSearch')?.value || '').toLowerCase().trim();
+
+  const monthRows = BORDER_DATA.filter(r => r.month === month);
+  renderBorderStats(monthRows, month);
+
+  const list = monthRows.filter(r => {
+    const matchCat = cat === 'all' || r.category === cat;
+    const matchQ = !query ||
+      r.country.toLowerCase().includes(query) ||
+      r.item.toLowerCase().includes(query) ||
+      r.violation.toLowerCase().includes(query);
+    return matchCat && matchQ;
+  });
+
+  tbody.innerHTML = '';
+  if (list.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#a0aec0;padding:24px">無符合條件的邊境查驗紀錄</td></tr>';
+    return;
+  }
+  list.forEach(r => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td class="bt-date">${escHtml(r.date)}</td>
+      <td class="bt-country">${escHtml(r.country)}</td>
+      <td class="bt-item">${escHtml(r.item)}</td>
+      <td><span class="border-cat-badge" style="background:${borderCatColor(r.category)}">${escHtml(r.category)}</span></td>
+      <td class="bt-viol">${escHtml(r.violation)}</td>
+      <td class="bt-std">${escHtml(r.standard)}</td>
     `;
     tbody.appendChild(tr);
   });
@@ -285,6 +412,7 @@ function drawTrendChart() {
   const H = canvas.height - padT - padB;
   const maxV = 300;
   ctx.clearRect(0, 0, canvas.width, canvas.height);
+
   // grid
   ctx.strokeStyle = '#edf2f7';
   ctx.lineWidth = 1;
@@ -296,29 +424,38 @@ function drawTrendChart() {
     ctx.textAlign = 'right';
     ctx.fillText(Math.round(maxV * t), padL - 4, y + 4);
   });
-  // line
+
+  // 計算所有點座標
   const pts = values.map((v, i) => ({
     x: padL + (W / (labels.length - 1)) * i,
     y: padT + H * (1 - v / maxV),
   }));
-  ctx.strokeStyle = '#38a169';
-  ctx.lineWidth = 2.5;
-  ctx.lineJoin = 'round';
-  ctx.beginPath();
-  pts.forEach((p, i) => {
-    if (values[i] === 0) return;
-    i === 0 || values[i-1] === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y);
-  });
-  ctx.stroke();
-  // fill
+
+  // 只取有資料（非0）的點
   const validPts = pts.filter((_, i) => values[i] > 0);
-  ctx.fillStyle = 'rgba(56,161,105,.12)';
-  ctx.beginPath();
-  ctx.moveTo(validPts[0].x, padT + H);
-  validPts.forEach(p => ctx.lineTo(p.x, p.y));
-  ctx.lineTo(validPts[validPts.length-1].x, padT + H);
-  ctx.closePath(); ctx.fill();
-  // dots
+
+  // FIX #2：折線只連有資料的點
+  if (validPts.length > 0) {
+    ctx.strokeStyle = '#38a169';
+    ctx.lineWidth = 2.5;
+    ctx.lineJoin = 'round';
+    ctx.beginPath();
+    validPts.forEach((p, i) => {
+      i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y);
+    });
+    ctx.stroke();
+
+    // FIX #2：fill 區域正確封閉：左下 → 各有效點 → 右下 → 閉合
+    ctx.fillStyle = 'rgba(56,161,105,.12)';
+    ctx.beginPath();
+    ctx.moveTo(validPts[0].x, padT + H);                       // 左下基準
+    validPts.forEach(p => ctx.lineTo(p.x, p.y));               // 沿折線頂部
+    ctx.lineTo(validPts[validPts.length - 1].x, padT + H);     // 右下基準
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  // dots & labels（僅有資料的點）
   pts.forEach((p, i) => {
     if (values[i] === 0) return;
     ctx.beginPath();
@@ -329,7 +466,8 @@ function drawTrendChart() {
     ctx.textAlign = 'center';
     ctx.fillText(values[i], p.x, p.y - 8);
   });
-  // x labels
+
+  // x labels（全部月份都顯示）
   ctx.fillStyle = '#718096';
   ctx.font = '12px sans-serif';
   labels.forEach((l, i) => {
@@ -344,7 +482,9 @@ const TIP_CATS = ['all', '冷鏈保存', '個人衛生', '標示判讀', '農藥
 let activeTipCat = 'all';
 
 function renderTipCategories() {
+  // FIX #1：每次重繪前清除容器，防止按鈕重複疊加
   const container = document.getElementById('tipsCategories');
+  container.innerHTML = '';
   const colors = ['#2d3748','#2b6cb0','#276749','#6b46c1','#744210','#c53030','#2b6cb0'];
   TIP_CATS.forEach((c, i) => {
     const btn = document.createElement('button');
@@ -406,6 +546,7 @@ function renderRecallFull() {
 }
 
 // ===== 聯絡表單 =====
+// FIX #3：請將 YOUR_FORM_ID 替換為實際的 Formspree ID，例如 'xpwzabcd'
 const FORMSPREE_ENDPOINT = 'https://formspree.io/f/YOUR_FORM_ID';
 
 async function submitForm(e) {
@@ -413,6 +554,13 @@ async function submitForm(e) {
   const form = e.target;
   const msg = document.getElementById('formMsg');
   const btn = form.querySelector('.submit-btn');
+
+  // 檢查是否已設定 Formspree ID
+  if (FORMSPREE_ENDPOINT.includes('YOUR_FORM_ID')) {
+    msg.textContent = '表單尚未設定，請聯絡品保處：tsuiting@chimeifood.com.tw';
+    msg.className = 'form-msg error';
+    return;
+  }
 
   btn.disabled = true;
   msg.textContent = '送出中…';
@@ -455,22 +603,31 @@ function typeLabel(t) {
 // ===== 即時抓取近7日食安新聞 =====
 
 // foodFocused=true 的頻道本身即為食品專屬，跳過關鍵字篩選
+// 已驗證可用（2026-06-18）：udn, ltn, bbc, nyt, guardian, gnews_tw, gnews_en, gtrends, heho, yahoo_health, who
+// 已驗證可用（2026-07-03 新增）：tvbs_health, yahoo_tw, gnews_home
+// 已移除失效來源：ettoday(回傳HTML), chinatimes(404), storm(404), reuters(DNS不存在), cnn(連線拒絕)
 const RSS_FEEDS = [
-  { key:'udn',        url:'https://udn.com/rssfeed/news/2/6638?ch=news',            foodFocused:false },
-  { key:'ltn',        url:'https://news.ltn.com.tw/rss/life.xml',                    foodFocused:false },
-  { key:'ettoday',    url:'https://www.ettoday.net/rss/rss.xml',                     foodFocused:false },
-  { key:'chinatimes', url:'https://www.chinatimes.com/rss/realtimenews.xml',          foodFocused:false },
-  { key:'storm',      url:'https://www.storm.mg/rss',                                foodFocused:false },
-  { key:'bbc',        url:'https://feeds.bbci.co.uk/news/health/rss.xml',            foodFocused:false },
-  { key:'nyt',        url:'https://rss.nytimes.com/services/xml/rss/nyt/Health.xml', foodFocused:false },
-  { key:'reuters',    url:'https://feeds.reuters.com/reuters/healthNews',            foodFocused:false },
-  { key:'guardian',   url:'https://www.theguardian.com/environment/food/rss',        foodFocused:true  },
-  { key:'cnn',        url:'http://rss.cnn.com/rss/cnn_health.rss',                   foodFocused:false },
+  // 國內媒體
+  { key:'udn',          url:'https://udn.com/rssfeed/news/2/6638?ch=news',            foodFocused:true  }, // UDN 食安專區，不需關鍵字篩選
+  { key:'ltn',          url:'https://news.ltn.com.tw/rss/life.xml',                    foodFocused:false },
+  { key:'heho',         url:'https://heho.com.tw/feed',                                foodFocused:false },
+  // 健康2.0（TVBS）無原生 RSS，改以 Google News「站內搜尋」抓取其食安/營養報導，結果已篩選故 foodFocused:true
+  { key:'tvbs_health',  url:'https://news.google.com/rss/search?q=(%E9%A3%9F%E5%AE%89+OR+%E9%A3%9F%E5%93%81%E5%AE%89%E5%85%A8+OR+%E8%90%A5%E9%A4%8A+OR+%E8%BE%B2%E8%97%A5+OR+%E6%B7%BB%E5%8A%A0%E7%89%A9)+site:health.tvbs.com.tw&hl=zh-TW&gl=TW&ceid=TW:zh-Hant', foodFocused:true },
+  // 奇摩新聞（Yahoo 台灣）健康版原生 RSS，需關鍵字過濾食安相關
+  { key:'yahoo_tw',     url:'https://tw.news.yahoo.com/rss/health',                    foodFocused:false },
+  // 國際媒體
+  { key:'bbc',          url:'https://feeds.bbci.co.uk/news/health/rss.xml',            foodFocused:false },
+  { key:'nyt',          url:'https://rss.nytimes.com/services/xml/rss/nyt/Health.xml', foodFocused:false },
+  { key:'guardian',     url:'https://www.theguardian.com/environment/food/rss',        foodFocused:true  },
+  { key:'yahoo_health', url:'https://news.yahoo.com/rss/health',                       foodFocused:false },
+  { key:'who',          url:'https://www.who.int/rss-feeds/news-english.xml',          foodFocused:false },
   // Google News — 以關鍵字搜尋，結果已篩選故 foodFocused:true
-  { key:'gnews_tw',   url:'https://news.google.com/rss/search?q=%E9%A3%9F%E5%AE%89+OR+%E9%A3%9F%E5%93%81%E5%AE%89%E5%85%A8+OR+%E9%A3%9F%E7%89%A9%E4%B8%AD%E6%AF%92+OR+%E8%BE%B2%E8%97%A5%E6%AE%98%E7%95%99+OR+%E4%B8%8B%E6%9E%B6+OR+%E5%8F%AC%E5%9B%9E&hl=zh-TW&gl=TW&ceid=TW:zh-Hant', foodFocused:true },
-  { key:'gnews_en',   url:'https://news.google.com/rss/search?q=food+safety+OR+food+recall+OR+food+poisoning+OR+food+contamination&hl=en-US&gl=US&ceid=US:en', foodFocused:true },
-  // Google Trends Taiwan — 熱搜趨勢，保留關鍵字篩選
-  { key:'gtrends',    url:'https://trends.google.com/trends/trendingsearches/daily/rss?geo=TW', foodFocused:false },
+  { key:'gnews_tw',     url:'https://news.google.com/rss/search?q=%E9%A3%9F%E5%AE%89+OR+%E9%A3%9F%E5%93%81%E5%AE%89%E5%85%A8+OR+%E9%A3%9F%E7%89%A9%E4%B8%AD%E6%AF%92+OR+%E8%BE%B2%E8%97%A5%E6%AE%98%E7%95%99+OR+%E4%B8%8B%E6%9E%B6+OR+%E5%8F%AC%E5%9B%9E&hl=zh-TW&gl=TW&ceid=TW:zh-Hant', foodFocused:true },
+  { key:'gnews_en',     url:'https://news.google.com/rss/search?q=food+safety+OR+food+recall+OR+food+poisoning+OR+food+contamination&hl=en-US&gl=US&ceid=US:en', foodFocused:true },
+  // Google 新聞台灣頭條（首頁即時綜合新聞），非食安專屬故需關鍵字篩選
+  { key:'gnews_home',   url:'https://news.google.com/rss?hl=zh-TW&gl=TW&ceid=TW:zh-Hant', foodFocused:false },
+  // Google Trends Taiwan（舊URL已失效，改用新版路徑）
+  { key:'gtrends',      url:'https://trends.google.com/trending/rss?geo=TW',           foodFocused:false },
 ];
 
 const FOOD_KW = [
@@ -514,93 +671,182 @@ async function fetchWithTimeout(url, ms = 10000) {
   }
 }
 
-// 依序嘗試三個 CORS Proxy，任一成功即返回 XML 文字
-async function fetchViaProxy(feedUrl) {
-  const proxies = [
-    async () => {
-      const r = await fetchWithTimeout(`https://corsproxy.io/?${encodeURIComponent(feedUrl)}`, 10000);
-      if (!r.ok) throw new Error(`${r.status}`);
-      return r.text();
-    },
-    async () => {
-      const r = await fetchWithTimeout(`https://api.allorigins.win/raw?url=${encodeURIComponent(feedUrl)}`, 10000);
-      if (!r.ok) throw new Error(`${r.status}`);
-      return r.text();
-    },
-    async () => {
-      const r = await fetchWithTimeout(`https://api.allorigins.win/get?url=${encodeURIComponent(feedUrl)}`, 12000);
-      if (!r.ok) throw new Error(`${r.status}`);
-      const j = await r.json();
-      return j.contents || '';
-    },
-  ];
-  for (const tryProxy of proxies) {
-    try {
-      const text = await tryProxy();
-      if (text && (text.includes('<item') || text.includes('<entry'))) return text;
-    } catch { /* 嘗試下一個 */ }
-  }
-  throw new Error('all proxies failed');
+// ===== RSS 格式正規化 — 各 API 輸出統一為 {title,desc,link,pubDate,srcName} =====
+function _normRss2Json(items, feedUrl) {
+  return (items || []).map(i => ({
+    title:   (i.title  || '').trim() || '(無標題)',
+    desc:    stripHtml(i.description || i.content || ''),
+    link:    i.link    || feedUrl,
+    pubDate: i.pubDate || '',
+    srcName: '',
+  }));
 }
-
-// 先以 text/xml 解析，失敗再用 text/html（容錯）
-function parseRSSItems(xmlText) {
-  const p = new DOMParser();
-  let doc = p.parseFromString(xmlText, 'text/xml');
-  if (!doc.querySelector('parsererror')) {
-    const items = [...doc.querySelectorAll('item, entry')];
-    if (items.length > 0) return items;
-  }
-  doc = p.parseFromString(xmlText, 'text/html');
-  return [...doc.querySelectorAll('item, entry')];
+function _normFeedrapp(entries, feedUrl) {
+  return (entries || []).map(e => ({
+    title:   (e.title  || '').trim() || '(無標題)',
+    desc:    stripHtml(e.content || e.contentSnippet || ''),
+    link:    e.link    || feedUrl,
+    pubDate: e.publishedDate || '',
+    srcName: '',
+  }));
 }
-
-async function fetchSingleRSS(feed) {
-  const xmlText = await fetchViaProxy(feed.url);
-  const items   = parseRSSItems(xmlText);
-
-  const results = [];
-  for (const item of items) {
+function _normFeed2Json(items, feedUrl) {
+  return (items || []).map(i => ({
+    title:   (i.title  || '').trim() || '(無標題)',
+    desc:    stripHtml(i.content_html || i.summary || ''),
+    link:    i.url     || feedUrl,
+    pubDate: i.date_published || '',
+    srcName: '',
+  }));
+}
+function _normXml(xmlItems, feedUrl) {
+  return xmlItems.map(item => {
     const title = item.querySelector('title')?.textContent?.trim() || '';
-    const rawDesc = item.querySelector('description, summary, content\\:encoded, content')?.textContent || '';
-    const desc  = stripHtml(rawDesc);
-    // <link>: RSS 2.0 為文字節點；Atom 用 href 屬性；Google News 有時是 <source url="...">
+    const desc  = stripHtml(item.querySelector('description, summary, content\\:encoded, content')?.textContent || '');
     const link  = item.querySelector('link')?.getAttribute('href') ||
                   item.querySelector('link')?.textContent?.trim() ||
                   item.querySelector('origLink')?.textContent?.trim() ||
-                  item.querySelector('source')?.getAttribute('url') || feed.url;
-    const pubDate = item.querySelector('pubDate, published, updated, dc\\:date, date, approx_traffic')?.textContent?.trim() || '';
-
-    // Google Trends 的 <title> 是關鍵字本身，附帶 <ht:news_item_title> 作為真實標題
-    const displayTitle = item.querySelector('news_item_title')?.textContent?.trim() || title;
-    const displayLink  = item.querySelector('news_item_url')?.textContent?.trim() || link;
-
-    if (matchesFoodSafety(displayTitle + ' ' + title + ' ' + desc, feed.foodFocused) && isWithin7Days(pubDate)) {
-      results.push({
-        title:   displayTitle || title || '(無標題)',
-        desc,
-        link:    displayLink || link,
-        pubDate,
-        source:  feed.key,
-        // Google News 文章帶原始來源名稱，顯示用
-        srcName: item.querySelector('source')?.textContent?.trim() || '',
-      });
-    }
-  }
-  return results;
+                  item.querySelector('source')?.getAttribute('url') || feedUrl;
+    const pubDate = item.querySelector('pubDate, published, updated, dc\\:date, date')?.textContent?.trim() || '';
+    return {
+      title:   item.querySelector('news_item_title')?.textContent?.trim() || title || '(無標題)',
+      desc,
+      link:    item.querySelector('news_item_url')?.textContent?.trim() || link,
+      pubDate,
+      srcName: item.querySelector('source')?.textContent?.trim() || '',
+    };
+  });
 }
 
+// ===== 四路並行競速策略 =====
+
+// 路徑 A：rss2json.com（最快，專為 RSS 設計）
+async function _fetchA(feedUrl) {
+  const r = await fetchWithTimeout(`https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(feedUrl)}`, 12000);
+  if (!r.ok) throw new Error(`A:${r.status}`);
+  const j = await r.json();
+  if (j.status !== 'ok' || !j.items?.length) throw new Error('A:empty');
+  return _normRss2Json(j.items, feedUrl);
+}
+
+// 路徑 B：feedrapp.info（第二家 RSS 解析服務）
+async function _fetchB(feedUrl) {
+  const r = await fetchWithTimeout(`https://feedrapp.info/api?q=${encodeURIComponent(feedUrl)}`, 12000);
+  if (!r.ok) throw new Error(`B:${r.status}`);
+  const j = await r.json();
+  const entries = j.responseData?.feed?.entries;
+  if (!entries?.length) throw new Error('B:empty');
+  return _normFeedrapp(entries, feedUrl);
+}
+
+// 路徑 C：feed2json.org（第三家 RSS 解析服務）
+async function _fetchC(feedUrl) {
+  const r = await fetchWithTimeout(`https://feed2json.org/convert?url=${encodeURIComponent(feedUrl)}`, 14000);
+  if (!r.ok) throw new Error(`C:${r.status}`);
+  const j = await r.json();
+  if (!j.items?.length) throw new Error('C:empty');
+  return _normFeed2Json(j.items, feedUrl);
+}
+
+// 路徑 D：5個 CORS Proxy 並行競速 + XML 解析（終極備援）
+async function _fetchD(feedUrl) {
+  const ok = t => t && (t.includes('<item') || t.includes('<entry'));
+  const tryP = fn => fn().then(t => { if (!ok(t)) throw new Error('D:no xml'); return t; });
+  const xml = await Promise.any([
+    tryP(async () => { const r = await fetchWithTimeout(`https://corsproxy.io/?${encodeURIComponent(feedUrl)}`,             10000); if (!r.ok) throw new Error(r.status); return r.text(); }),
+    tryP(async () => { const r = await fetchWithTimeout(`https://api.allorigins.win/raw?url=${encodeURIComponent(feedUrl)}`, 10000); if (!r.ok) throw new Error(r.status); return r.text(); }),
+    tryP(async () => { const r = await fetchWithTimeout(`https://api.allorigins.win/get?url=${encodeURIComponent(feedUrl)}`, 12000); if (!r.ok) throw new Error(r.status); const j = await r.json(); return j.contents || ''; }),
+    tryP(async () => { const r = await fetchWithTimeout(`https://cors.eu.org/${feedUrl}`,                                   10000); if (!r.ok) throw new Error(r.status); return r.text(); }),
+    tryP(async () => { const r = await fetchWithTimeout(`https://corsproxy.org/?${encodeURIComponent(feedUrl)}`,            10000); if (!r.ok) throw new Error(r.status); return r.text(); }),
+  ]);
+  const items = (() => {
+    const p = new DOMParser();
+    let doc = p.parseFromString(xml, 'text/xml');
+    if (!doc.querySelector('parsererror')) {
+      const its = [...doc.querySelectorAll('item, entry')];
+      if (its.length) return its;
+    }
+    return [...p.parseFromString(xml, 'text/html').querySelectorAll('item, entry')];
+  })();
+  if (!items.length) throw new Error('D:parse empty');
+  return _normXml(items, feedUrl);
+}
+
+async function fetchSingleRSS(feed) {
+  // A/B/C/D 四路同時發出，取最快成功的那一路
+  const raw = await Promise.any([
+    _fetchA(feed.url),
+    _fetchB(feed.url),
+    _fetchC(feed.url),
+    _fetchD(feed.url),
+  ]);
+  return raw
+    .filter(a => matchesFoodSafety(a.title + ' ' + a.desc, feed.foodFocused) && isWithin7Days(a.pubDate))
+    .map(a => ({ ...a, source: feed.key }));
+}
+
+// FIX #5：移除無效的 chip.querySelector('.chip-dot').className 操作，
+// 直接在 innerHTML 中設定正確的 class，保持邏輯清晰
 function updateChip(key, state, count) {
   const chip = document.getElementById('chip-' + key);
   if (!chip) return;
   chip.className = `src-chip ${state}`;
-  chip.querySelector('.chip-dot').className = `chip-dot ${count === 0 && state === 'ok' ? 'warn' : state}`;
+  const dotClass = (count === 0 && state === 'ok') ? 'warn' : state;
   const label = SOURCES[key]?.short || key;
-  chip.innerHTML = `<span class="chip-dot ${count === 0 && state === 'ok' ? 'warn' : state}"></span>${label}${state === 'ok' ? ` <span style="opacity:.65">(${count})</span>` : state === 'fail' ? ' ✕' : ''}`;
-  chip.title = state === 'ok' ? `找到 ${count} 則食安新聞` : state === 'fail' ? '抓取失敗' : '抓取中…';
+  let labelHtml = label;
+  if (state === 'ok')   labelHtml += ` <span style="opacity:.65">(${count})</span>`;
+  if (state === 'fail') labelHtml += ' ✕';
+  chip.innerHTML = `<span class="chip-dot ${dotClass}"></span>${labelHtml}`;
+  chip.title = state === 'ok'
+    ? `找到 ${count} 則食安新聞`
+    : state === 'fail' ? '抓取失敗' : '抓取中…';
 }
 
-async function fetchLiveNews() {
+let _liveCache = null;
+let _liveCacheAt = 0;
+const LIVE_CACHE_TTL = 30 * 1000; // 30秒防雙擊，「重新更新」按鈕可強制略過
+
+function renderLiveCards(articles, grid, emptyEl) {
+  grid.innerHTML = '';
+  emptyEl.style.display = 'none';
+  if (articles.length === 0) {
+    emptyEl.style.display = 'block';
+    emptyEl.innerHTML = `
+      <div style="font-size:2rem;margin-bottom:12px">📭</div>
+      未找到近7日食安相關新聞。<br/>
+      <small>可能原因：① 各媒體 RSS 伺服器暫時無回應（最常見）② 網路限制了對外連線 ③ 本周確實無食安重大事件。<br/>請稍後再按「重新更新」重試。</small>
+    `;
+    return;
+  }
+  articles.forEach(a => {
+    const src = SOURCES[a.source] || {};
+    const isGoogle = a.source.startsWith('gnews') || a.source === 'gtrends';
+    const subLabel = isGoogle && a.srcName
+      ? `<span class="gnews-sub">${escHtml(a.srcName)}</span>` : '';
+    const card = document.createElement('div');
+    card.className = 'news-card';
+    card.innerHTML = `
+      <div class="news-card-source-bar" style="background:${src.color || '#aaa'}"></div>
+      <div class="news-card-body">
+        <div class="news-card-meta">
+          <span class="source-badge" style="background:${src.bg||'#eee'};color:${src.color||'#333'}">${src.short || a.source}</span>
+          ${subLabel}
+          <span class="live-tag-sm">LIVE</span>
+        </div>
+        <div class="news-card-title">${escHtml(a.title)}</div>
+        <div class="news-card-summary">${escHtml(a.desc.slice(0, 130))}${a.desc.length > 130 ? '…' : ''}</div>
+      </div>
+      <div class="news-card-footer">
+        <span>${formatPubDate(a.pubDate)}</span>
+        <a class="news-card-link" href="${escHtml(a.link)}" target="_blank" rel="noopener noreferrer"
+           onclick="event.stopPropagation()">前往原文 &rsaquo;</a>
+      </div>
+    `;
+    grid.appendChild(card);
+  });
+}
+
+async function fetchLiveNews(forceRefresh = false) {
   const btn      = document.getElementById('liveFetchBtn');
   const section  = document.getElementById('liveNewsSection');
   const statusEl = document.getElementById('liveFetchStatus');
@@ -609,12 +855,23 @@ async function fetchLiveNews() {
   const timeEl   = document.getElementById('liveFetchTime');
   const emptyEl  = document.getElementById('liveEmpty');
 
+  section.style.display = 'block';
+
+  // 未強制更新時，30秒內使用快取（防止連續快速點擊）
+  if (!forceRefresh && _liveCache && Date.now() - _liveCacheAt < LIVE_CACHE_TTL) {
+    const { articles, titleText, timeText } = _liveCache;
+    titleEl.textContent = titleText;
+    timeEl.textContent = timeText + '（快取）';
+    statusEl.innerHTML = '';
+    renderLiveCards(articles, grid, emptyEl);
+    return;
+  }
+
   // Loading state
   btn.disabled = true;
   btn.querySelector('.lf-icon').style.display = 'none';
   btn.querySelector('.lf-spinner').style.display = 'inline-block';
   btn.querySelector('.lf-text').textContent = '抓取中…';
-  section.style.display = 'block';
   grid.innerHTML = '';
   emptyEl.style.display = 'none';
   titleEl.textContent = '正在連線抓取…';
@@ -628,69 +885,49 @@ async function fetchLiveNews() {
     </div>`;
   }).join('');
 
-  // Fetch all sources in parallel
+  // Fetch all sources in parallel，回傳 {ok, articles} 以區分「連線失敗」vs「無食安新聞」
   const settled = await Promise.allSettled(
     RSS_FEEDS.map(async feed => {
       try {
         const articles = await fetchSingleRSS(feed);
         updateChip(feed.key, 'ok', articles.length);
-        return articles;
+        return { ok: true, articles };
       } catch {
         updateChip(feed.key, 'fail', 0);
-        return [];
+        return { ok: false, articles: [] };
       }
     })
   );
 
-  const allArticles = settled
-    .flatMap(r => r.value || [])
+  const results     = settled.map(r => r.value || { ok: false, articles: [] });
+  const allArticles = results
+    .flatMap(r => r.articles)
     .sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate));
 
-  const successSources = settled.filter(r => r.value?.length > 0).length;
+  const hitSources   = results.filter(r => r.ok && r.articles.length > 0).length;
+  const failSources  = results.filter(r => !r.ok).length;
+  const emptySources = results.filter(r => r.ok && r.articles.length === 0).length;
+
   const now = new Date();
   const nowStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
 
-  titleEl.textContent = allArticles.length > 0
-    ? `近7日食安新聞 — 共 ${allArticles.length} 則（${successSources} 個來源）`
+  const titleText = allArticles.length > 0
+    ? `近7日食安新聞 — 共 ${allArticles.length} 則（${hitSources} 個來源有新聞）`
     : '未找到符合條件的近7日食安新聞';
-  timeEl.textContent = `更新：${nowStr}`;
 
-  if (allArticles.length === 0) {
-    emptyEl.style.display = 'block';
-    emptyEl.innerHTML = `
-      <div style="font-size:2rem;margin-bottom:12px">📭</div>
-      未找到近7日食安相關新聞。<br/>
-      <small>可能原因：媒體RSS格式調整、網路CORS限制，或本周確實無食安重大事件。</small>
-    `;
-  } else {
-    allArticles.forEach(a => {
-      const src = SOURCES[a.source] || {};
-      // Google News / Trends 顯示原始來源名稱
-      const isGoogle = a.source.startsWith('gnews') || a.source === 'gtrends';
-      const subLabel = isGoogle && a.srcName
-        ? `<span class="gnews-sub">${escHtml(a.srcName)}</span>` : '';
-      const card = document.createElement('div');
-      card.className = 'news-card';
-      card.innerHTML = `
-        <div class="news-card-source-bar" style="background:${src.color || '#aaa'}"></div>
-        <div class="news-card-body">
-          <div class="news-card-meta">
-            <span class="source-badge" style="background:${src.bg||'#eee'};color:${src.color||'#333'}">${src.short || a.source}</span>
-            ${subLabel}
-            <span class="live-tag-sm">LIVE</span>
-          </div>
-          <div class="news-card-title">${escHtml(a.title)}</div>
-          <div class="news-card-summary">${escHtml(a.desc.slice(0, 130))}${a.desc.length > 130 ? '…' : ''}</div>
-        </div>
-        <div class="news-card-footer">
-          <span>${formatPubDate(a.pubDate)}</span>
-          <a class="news-card-link" href="${escHtml(a.link)}" target="_blank" rel="noopener noreferrer"
-             onclick="event.stopPropagation()">前往原文 &rsaquo;</a>
-        </div>
-      `;
-      grid.appendChild(card);
-    });
-  }
+  const notes = [];
+  if (failSources  > 0) notes.push(`${failSources} 個來源連線失敗`);
+  if (emptySources > 0) notes.push(`${emptySources} 個來源本週無食安新聞`);
+  const timeText = `更新：${nowStr}${notes.length ? '　' + notes.join('，') : ''}`;
+
+  titleEl.textContent = titleText;
+  timeEl.textContent = timeText;
+
+  // 儲存快取
+  _liveCache = { articles: allArticles, titleText, timeText };
+  _liveCacheAt = Date.now();
+
+  renderLiveCards(allArticles, grid, emptyEl);
 
   // Reset button
   btn.disabled = false;
