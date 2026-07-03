@@ -1,6 +1,6 @@
 # 食安週報新聞來源彙整（2026年更新）
 
-> 最後驗證日期：**2026-06-18**
+> 最後驗證日期：**2026-07-03**（新增健康2.0、奇摩新聞、Google新聞頭條）
 > 驗證方式：由伺服器端直接對 RSS URL 發出 HTTP 請求 + rss2json.com API 雙重測試
 
 ---
@@ -12,12 +12,15 @@
 | 聯合新聞網 UDN | 國內 | ✅ 正常 | 食安專區 RSS，`foodFocused: true` |
 | 自由時報 LTN | 國內 | ✅ 正常 | 生活版 RSS，關鍵字篩選 |
 | Heho 健康 | 國內 | ✅ 正常 | 台灣健康食安媒體，2026新增 |
+| 健康2.0（TVBS） | 國內 | ✅ 正常 | 無原生 RSS，改用 Google News 站內搜尋，`foodFocused: true`；2026-07新增 |
+| 奇摩新聞（Yahoo TW） | 國內 | ✅ 正常 | 台灣 Yahoo 健康版原生 RSS，關鍵字篩選；2026-07新增 |
 | BBC News | 國際 | ✅ 正常 | 健康版 RSS，關鍵字篩選 |
 | The New York Times | 國際 | ✅ 正常 | 健康版 RSS，關鍵字篩選 |
 | The Guardian 衛報 | 國際 | ✅ 正常 | 食品環境版 RSS，`foodFocused: true` |
 | Yahoo Health | 國際 | ✅ 正常 | 2026新增 |
 | WHO 世衛組織 | 國際 | ✅ 正常 | 2026新增 |
 | Google News（台灣食安） | 彙整 | ✅ 正常 | 關鍵字搜尋 RSS，`foodFocused: true` |
+| Google News（台灣頭條） | 彙整 | ✅ 正常 | 首頁即時綜合新聞 RSS，關鍵字篩選；2026-07新增 |
 | Google News（英文食安） | 彙整 | ✅ 正常 | 關鍵字搜尋 RSS，`foodFocused: true` |
 | Google Trends（台灣） | 彙整 | ✅ 正常 | URL 已於2026更新為新版路徑 |
 | ~~ETtoday 新聞雲~~ | 國內 | ❌ 失效 | RSS URL 回傳 HTML，非 XML |
@@ -38,6 +41,8 @@
 | **聯合新聞網 UDN** | `https://udn.com/rssfeed/news/2/6638?ch=news` | 食安專區，內容專一；RSS 穩定 |
 | **自由時報 LTN** | `https://news.ltn.com.tw/rss/life.xml` | 生活版，需關鍵字過濾食安相關 |
 | **Heho 健康** | `https://heho.com.tw/feed` | 台灣食安健康專業媒體；2026年新增替代來源 |
+| **健康2.0（TVBS）** | `https://news.google.com/rss/search?q=(食安 OR 食品安全 OR 營養 OR 農藥 OR 添加物) site:health.tvbs.com.tw&hl=zh-TW&gl=TW&ceid=TW:zh-Hant` | `health.tvbs.com.tw` 無原生 RSS，改用 Google News 站內搜尋抓取其營養食安報導；2026-07新增 |
+| **奇摩新聞（Yahoo TW）** | `https://tw.news.yahoo.com/rss/health` | 台灣 Yahoo 奇摩健康版原生 RSS（每次約30則），需關鍵字過濾食安相關；2026-07新增 |
 
 ### 已失效來源（原收錄，現已移除）
 
@@ -78,6 +83,7 @@
 | :--- | :--- | :--- |
 | **Google News 台灣食安** | `https://news.google.com/rss/search?q=食安+OR+食品安全+OR+食物中毒+OR+農藥殘留+OR+下架+OR+召回&hl=zh-TW&gl=TW&ceid=TW:zh-Hant` | 關鍵字搜尋彙整，涵蓋各台灣媒體（含已失效 RSS 的媒體） |
 | **Google News 英文食安** | `https://news.google.com/rss/search?q=food+safety+OR+food+recall+OR+food+poisoning&hl=en-US&gl=US&ceid=US:en` | 彙整路透、CNN、AP 等國際媒體的食安報導 |
+| **Google News 台灣頭條** | `https://news.google.com/rss?hl=zh-TW&gl=TW&ceid=TW:zh-Hant` | 台灣 Google 新聞首頁即時綜合頭條，非食安專屬故需關鍵字篩選；2026-07新增 |
 | **Google Trends 台灣** | `https://trends.google.com/trending/rss?geo=TW` | 台灣即時熱搜趨勢；**注意：舊路徑已失效，需使用此新路徑** |
 
 > **舊路徑（已失效）**：`https://trends.google.com/trends/trendingsearches/daily/rss?geo=TW`（HTTP 404）

@@ -13,6 +13,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initSourceFilterBtns();
   renderInspectionTable();
   initInspectionFilters();
+  initBorder();
   drawCharts();
   renderTips('all');
   renderTipCategories();
@@ -267,6 +268,95 @@ function initInspectionFilters() {
   });
 }
 
+// ===== 邊境查驗 =====
+function initBorder() {
+  const monthSel = document.getElementById('borderMonth');
+  const catSel   = document.getElementById('borderCategory');
+  if (!monthSel || !catSel || typeof BORDER_DATA === 'undefined') return;
+
+  // 月份下拉：由資料中的月份去重，由新到舊，預設最新月份
+  const months = [...new Set(BORDER_DATA.map(r => r.month))].sort((a, b) => b - a);
+  monthSel.innerHTML = months
+    .map((m, i) => `<option value="${m}"${i === 0 ? ' selected' : ''}>${m}月${i === 0 ? '（最新）' : ''}</option>`)
+    .join('');
+
+  // 類別下拉：依出現次數排序
+  const catCount = {};
+  BORDER_DATA.forEach(r => { catCount[r.category] = (catCount[r.category] || 0) + 1; });
+  const cats = Object.keys(catCount).sort((a, b) => catCount[b] - catCount[a]);
+  catSel.innerHTML = '<option value="all">全部類別</option>' +
+    cats.map(c => `<option value="${escHtml(c)}">${escHtml(c)}</option>`).join('');
+
+  monthSel.addEventListener('change', renderBorderTable);
+  catSel.addEventListener('change', renderBorderTable);
+  renderBorderTable();
+}
+
+function borderCatColor(cat) {
+  return (typeof BORDER_CAT_COLORS !== 'undefined' && BORDER_CAT_COLORS[cat]) || '#718096';
+}
+
+function renderBorderStats(monthRows, month) {
+  const el = document.getElementById('borderStats');
+  if (!el) return;
+  if (monthRows.length === 0) {
+    el.innerHTML = `<div class="bstat"><span class="bstat-num">0</span><label>${month}月不符合筆數</label></div>`;
+    return;
+  }
+  const tally = (key) => {
+    const m = {};
+    monthRows.forEach(r => { m[r[key]] = (m[r[key]] || 0) + 1; });
+    return Object.entries(m).sort((a, b) => b[1] - a[1])[0];
+  };
+  const topCountry = tally('country');
+  const topCat     = tally('category');
+  const countries  = new Set(monthRows.map(r => r.country)).size;
+  el.innerHTML = `
+    <div class="bstat"><span class="bstat-num">${monthRows.length}</span><label>${month}月不符合筆數</label></div>
+    <div class="bstat"><span class="bstat-num">${countries}</span><label>涉及來源國</label></div>
+    <div class="bstat"><span class="bstat-num">${escHtml(topCountry[0])}</span><label>最多來源國（${topCountry[1]}筆）</label></div>
+    <div class="bstat"><span class="bstat-num" style="color:${borderCatColor(topCat[0])}">${escHtml(topCat[0])}</span><label>最多違規類別（${topCat[1]}筆）</label></div>
+  `;
+}
+
+function renderBorderTable() {
+  const tbody = document.getElementById('borderBody');
+  if (!tbody) return;
+  const month = parseInt(document.getElementById('borderMonth').value, 10);
+  const cat   = document.getElementById('borderCategory').value;
+  const query = (document.getElementById('borderSearch')?.value || '').toLowerCase().trim();
+
+  const monthRows = BORDER_DATA.filter(r => r.month === month);
+  renderBorderStats(monthRows, month);
+
+  const list = monthRows.filter(r => {
+    const matchCat = cat === 'all' || r.category === cat;
+    const matchQ = !query ||
+      r.country.toLowerCase().includes(query) ||
+      r.item.toLowerCase().includes(query) ||
+      r.violation.toLowerCase().includes(query);
+    return matchCat && matchQ;
+  });
+
+  tbody.innerHTML = '';
+  if (list.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#a0aec0;padding:24px">無符合條件的邊境查驗紀錄</td></tr>';
+    return;
+  }
+  list.forEach(r => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td class="bt-date">${escHtml(r.date)}</td>
+      <td class="bt-country">${escHtml(r.country)}</td>
+      <td class="bt-item">${escHtml(r.item)}</td>
+      <td><span class="border-cat-badge" style="background:${borderCatColor(r.category)}">${escHtml(r.category)}</span></td>
+      <td class="bt-viol">${escHtml(r.violation)}</td>
+      <td class="bt-std">${escHtml(r.standard)}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
 // ===== 圖表 =====
 function drawCharts() {
   drawPassChart();
@@ -514,12 +604,17 @@ function typeLabel(t) {
 
 // foodFocused=true 的頻道本身即為食品專屬，跳過關鍵字篩選
 // 已驗證可用（2026-06-18）：udn, ltn, bbc, nyt, guardian, gnews_tw, gnews_en, gtrends, heho, yahoo_health, who
+// 已驗證可用（2026-07-03 新增）：tvbs_health, yahoo_tw, gnews_home
 // 已移除失效來源：ettoday(回傳HTML), chinatimes(404), storm(404), reuters(DNS不存在), cnn(連線拒絕)
 const RSS_FEEDS = [
   // 國內媒體
   { key:'udn',          url:'https://udn.com/rssfeed/news/2/6638?ch=news',            foodFocused:true  }, // UDN 食安專區，不需關鍵字篩選
   { key:'ltn',          url:'https://news.ltn.com.tw/rss/life.xml',                    foodFocused:false },
   { key:'heho',         url:'https://heho.com.tw/feed',                                foodFocused:false },
+  // 健康2.0（TVBS）無原生 RSS，改以 Google News「站內搜尋」抓取其食安/營養報導，結果已篩選故 foodFocused:true
+  { key:'tvbs_health',  url:'https://news.google.com/rss/search?q=(%E9%A3%9F%E5%AE%89+OR+%E9%A3%9F%E5%93%81%E5%AE%89%E5%85%A8+OR+%E8%90%A5%E9%A4%8A+OR+%E8%BE%B2%E8%97%A5+OR+%E6%B7%BB%E5%8A%A0%E7%89%A9)+site:health.tvbs.com.tw&hl=zh-TW&gl=TW&ceid=TW:zh-Hant', foodFocused:true },
+  // 奇摩新聞（Yahoo 台灣）健康版原生 RSS，需關鍵字過濾食安相關
+  { key:'yahoo_tw',     url:'https://tw.news.yahoo.com/rss/health',                    foodFocused:false },
   // 國際媒體
   { key:'bbc',          url:'https://feeds.bbci.co.uk/news/health/rss.xml',            foodFocused:false },
   { key:'nyt',          url:'https://rss.nytimes.com/services/xml/rss/nyt/Health.xml', foodFocused:false },
@@ -529,6 +624,8 @@ const RSS_FEEDS = [
   // Google News — 以關鍵字搜尋，結果已篩選故 foodFocused:true
   { key:'gnews_tw',     url:'https://news.google.com/rss/search?q=%E9%A3%9F%E5%AE%89+OR+%E9%A3%9F%E5%93%81%E5%AE%89%E5%85%A8+OR+%E9%A3%9F%E7%89%A9%E4%B8%AD%E6%AF%92+OR+%E8%BE%B2%E8%97%A5%E6%AE%98%E7%95%99+OR+%E4%B8%8B%E6%9E%B6+OR+%E5%8F%AC%E5%9B%9E&hl=zh-TW&gl=TW&ceid=TW:zh-Hant', foodFocused:true },
   { key:'gnews_en',     url:'https://news.google.com/rss/search?q=food+safety+OR+food+recall+OR+food+poisoning+OR+food+contamination&hl=en-US&gl=US&ceid=US:en', foodFocused:true },
+  // Google 新聞台灣頭條（首頁即時綜合新聞），非食安專屬故需關鍵字篩選
+  { key:'gnews_home',   url:'https://news.google.com/rss?hl=zh-TW&gl=TW&ceid=TW:zh-Hant', foodFocused:false },
   // Google Trends Taiwan（舊URL已失效，改用新版路徑）
   { key:'gtrends',      url:'https://trends.google.com/trending/rss?geo=TW',           foodFocused:false },
 ];

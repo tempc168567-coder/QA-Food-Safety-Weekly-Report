@@ -656,6 +656,69 @@ nav a:hover, nav a.active {
   background: #fff;
   cursor: pointer;
 }
+.inspection-controls input[type="text"] {
+  padding: 8px 14px;
+  border-radius: 8px;
+  border: 1px solid #cbd5e0;
+  font-size: .88rem;
+  background: #fff;
+  flex: 1 1 240px;
+  min-width: 200px;
+}
+
+/* ===== 邊境查驗 ===== */
+.border-stats {
+  max-width: 1200px;
+  margin: 0 auto 18px;
+  padding: 0 24px;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+}
+.bstat {
+  background: #fff;
+  border: 1px solid #edf2f7;
+  border-radius: 12px;
+  padding: 16px 14px;
+  text-align: center;
+  box-shadow: 0 2px 8px rgba(0,0,0,.05);
+}
+.bstat-num {
+  display: block;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #1a6b3c;
+  line-height: 1.2;
+  word-break: break-all;
+}
+.bstat label { font-size: .8rem; color: #718096; margin-top: 4px; display: block; }
+
+.border-cat-badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 999px;
+  color: #fff;
+  font-size: .78rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.border-table { font-size: .85rem; table-layout: fixed; }
+.border-table th:nth-child(1), .border-table td.bt-date    { width: 96px; white-space: nowrap; }
+.border-table th:nth-child(2), .border-table td.bt-country { width: 84px; }
+.border-table th:nth-child(3), .border-table td.bt-item    { width: 130px; }
+.border-table th:nth-child(4)                              { width: 108px; }
+.border-table td.bt-viol, .border-table td.bt-std {
+  font-size: .82rem;
+  line-height: 1.5;
+  color: #4a5568;
+  word-break: break-word;
+  white-space: normal;
+}
+.border-table td { vertical-align: top; }
+@media (max-width: 820px) {
+  .border-stats { grid-template-columns: repeat(2, 1fr); }
+  .border-table { min-width: 760px; }
+}
 .inspection-table-wrapper {
   max-width: 1200px;
   margin: 0 auto;
