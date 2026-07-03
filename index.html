@@ -23,6 +23,7 @@
           <li><a href="#" class="active" data-page="home">首頁</a></li>
           <li><a href="#" data-page="news">食安新聞</a></li>
           <li><a href="#" data-page="inspection">稽查報告</a></li>
+          <li><a href="#" data-page="border">邊境查驗</a></li>
           <li><a href="#" data-page="tips">食安知識</a></li>
           <li><a href="#" data-page="recall">下架召回</a></li>
           <li><a href="#" data-page="contact">聯絡我們</a></li>
@@ -215,6 +216,47 @@
           <div class="chart-title">月份稽查件數趨勢</div>
           <canvas id="trendChart" width="340" height="220"></canvas>
         </div>
+      </div>
+    </section>
+
+    <!-- ===== 邊境查驗 ===== -->
+    <section id="page-border" class="page">
+      <div class="page-title">輸入食品邊境查驗不符合</div>
+
+      <!-- 資料來源說明 -->
+      <div class="recall-source-box">
+        <div class="rsb-title">&#128196; 資料來源說明</div>
+        <p>本頁彙整<strong>衛生福利部食品藥物管理署（TFDA）</strong>公告之「輸入食品邊境查驗不符合資訊」，供品保處掌握近期進口食品遭邊境攔查之品項、來源國與不符合原因，作為原物料採購與供應商風險管理之參考。</p>
+        <ul class="rsb-list">
+          <li>
+            <span class="rsb-badge gov">衛福部</span>
+            <strong>食藥署 — 邊境查驗不符合食品資訊</strong>
+            <a href="https://www.fda.gov.tw/UnsafeFood/UnsafeFood.aspx" target="_blank" rel="noopener noreferrer" class="rsb-link">前往官網查詢 &#8599;</a>
+          </li>
+        </ul>
+        <p class="rsb-note">&#9432; 本頁資料整理自食藥署公告，實際內容以官方公告為準。</p>
+      </div>
+
+      <!-- 篩選控制 -->
+      <div class="inspection-controls">
+        <select id="borderMonth"></select>
+        <select id="borderCategory"><option value="all">全部類別</option></select>
+        <input type="text" id="borderSearch" placeholder="搜尋國家 / 品項 / 不符合事項…" oninput="renderBorderTable()" />
+      </div>
+
+      <!-- 當月統計 -->
+      <div class="border-stats" id="borderStats"></div>
+
+      <div class="inspection-table-wrapper">
+        <table class="inspection-table border-table" id="borderTable">
+          <thead>
+            <tr>
+              <th>公告日期</th><th>來源國</th><th>品項</th>
+              <th>不符合分類</th><th>不符合事項</th><th>法規限量標準</th>
+            </tr>
+          </thead>
+          <tbody id="borderBody"></tbody>
+        </table>
       </div>
     </section>
 
