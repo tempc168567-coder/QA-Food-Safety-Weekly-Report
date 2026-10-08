@@ -843,6 +843,9 @@ async function fetchSingleRSS(feed) {
     _fetchD(feed.url),
   ]);
   return raw
+    // 來源 RSS 本身偶爾會回傳全空的佔位項目（例如 UDN 部分頻道），標題與內容皆空時直接捨棄，
+    // 避免版面出現一堆「(無標題)」空卡片
+    .filter(a => !(a.title === '(無標題)' && !a.desc))
     .filter(a => matchesFoodSafety(a.title + ' ' + a.desc, feed.foodFocused) && isWithin7Days(a.pubDate))
     .map(a => ({ ...a, source: feed.key }));
 }
