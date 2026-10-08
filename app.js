@@ -54,9 +54,39 @@ function goPage(page) {
   }
 }
 
-// ===== 跑馬燈 =====
+// ===== 跑馬燈（改為即時資料自動生成，不再使用靜態文字）=====
+function marqueeTruncate(text, max) {
+  return text.length > max ? text.slice(0, max).trim() + '…' : text;
+}
+
+function buildMarqueeItems() {
+  const items = [];
+
+  // 下架召回：取即時連線食藥署 RSS 後最新的 2 筆（RSS 標題本身即完整長句，截短以利跑馬燈閱讀）
+  if (Array.isArray(_recallCache) && _recallCache.length) {
+    _recallCache.slice(0, 2).forEach(r => {
+      items.push(`【下架召回】${marqueeTruncate(r.name, 36)}（${formatPubDate(r.pubDate)}）`);
+    });
+  }
+
+  // 邊境查驗：BORDER_DATA 由排程自動更新，取全部資料中日期最新的 2 筆
+  if (typeof BORDER_DATA !== 'undefined' && BORDER_DATA.length) {
+    [...BORDER_DATA]
+      .sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0))
+      .slice(0, 2)
+      .forEach(b => {
+        items.push(`【邊境查驗】${b.country}輸入「${marqueeTruncate(b.item, 20)}」檢出${b.category}不符合（${b.date}）`);
+      });
+  }
+
+  if (items.length === 0) {
+    items.push('【系統】最新公告資料載入中，若長時間無內容請重新整理頁面。');
+  }
+  return items;
+}
+
 function renderMarquee() {
-  document.getElementById('marqueeText').textContent = MARQUEE_ITEMS.join('　　　　');
+  document.getElementById('marqueeText').textContent = buildMarqueeItems().join('　　　　');
 }
 
 // ===== 首頁：最新消息 =====
@@ -141,6 +171,7 @@ async function fetchLiveRecalls() {
   }
   renderHomeRecall();
   renderRecallFull();
+  renderMarquee(); // 召回資料到位後重新產生跑馬燈，納入最新召回公告
 }
 
 // ===== 首頁：下架召回 =====
