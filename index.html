@@ -92,6 +92,7 @@
           <span>&#9888; 近期下架 / 召回警示</span>
           <button class="more-btn-white" onclick="goPage('recall')">全部清單</button>
         </div>
+        <div class="recall-source-note" id="homeRecallStatus"></div>
         <div class="recall-list" id="homeRecallList"></div>
       </div>
 
@@ -285,8 +286,8 @@
           <li>
             <span class="rsb-badge gov">衛福部</span>
             <strong>衛生福利部食品藥物管理署（TFDA）</strong>—
-            食品回收、下架及停售公告
-            <a href="https://www.fda.gov.tw/TC/siteListContent.aspx?sid=4" target="_blank" rel="noopener noreferrer" class="rsb-link">前往官網 &#8599;</a>
+            國外消費紅綠燈：食品（本頁下方清單即時連線此官方 RSS 來源）
+            <a href="https://www.fda.gov.tw/TC/csmLight.aspx" target="_blank" rel="noopener noreferrer" class="rsb-link">前往官網 &#8599;</a>
           </li>
           <li>
             <span class="rsb-badge gov">農業部</span>
@@ -306,7 +307,8 @@
             依廠內自主管理及客訴追蹤發現之問題品項
           </li>
         </ul>
-        <p class="rsb-note">&#9432; 本頁資料為示範用途，實際公告以各機關官方平台為準。如需查詢最新下架資訊，請直接至上列官網確認。</p>
+        <p class="rsb-note">&#9432; 農業部、經濟部標準檢驗局及本公司內部稽查資料，請至上列官網或聯絡品保處確認；僅食藥署「國外消費紅綠燈：食品」為本頁即時抓取。</p>
+        <p class="recall-source-note" id="recallFullStatus"></p>
       </div>
 
       <div class="recall-full-list" id="recallFullList"></div>

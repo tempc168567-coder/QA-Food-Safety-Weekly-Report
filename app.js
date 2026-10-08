@@ -18,6 +18,7 @@ document.addEventListener('DOMContentLoaded', () => {
   renderTips('all');
   renderTipCategories();
   renderRecallFull();
+  fetchLiveRecalls(); // 即時連線衛福部食藥署取得下架／召回資訊（每次開啟網頁自動更新）
   // 顯示實際 RSS 來源數量（RSS_FEEDS 在此時已定義）
   const fc = document.getElementById('feedCount');
   if (fc) fc.textContent = RSS_FEEDS.length;
@@ -96,17 +97,71 @@ function renderTipCard() {
   `;
 }
 
+// ===== 下架召回（即時連線衛福部食藥署）=====
+const RECALL_FEED_URL = 'https://www.fda.gov.tw/TC/rssLight_Food.ashx';
+let _recallCache = null; // null = 尚未載入；[] = 已載入但無資料或連線失敗；Array = 已載入
+
+function renderRecallStatus(elId, state, extra) {
+  const el = document.getElementById(elId);
+  if (!el) return;
+  if (state === 'loading') {
+    el.textContent = '資料來源：衛生福利部食品藥物管理署（即時連線中…）';
+  } else if (state === 'ok') {
+    el.textContent = `資料來源：衛生福利部食品藥物管理署・更新於 ${extra}`;
+  } else {
+    el.innerHTML = `資料來源：衛生福利部食品藥物管理署（本次連線失敗，請至<a href="https://www.fda.gov.tw/TC/csmLight.aspx" target="_blank" rel="noopener noreferrer">官網查詢</a>）`;
+  }
+}
+
+async function fetchLiveRecalls() {
+  renderRecallStatus('homeRecallStatus', 'loading');
+  renderRecallStatus('recallFullStatus', 'loading');
+  try {
+    const raw = await Promise.any([
+      _fetchA(RECALL_FEED_URL),
+      _fetchB(RECALL_FEED_URL),
+      _fetchC(RECALL_FEED_URL),
+      _fetchD(RECALL_FEED_URL),
+    ]);
+    _recallCache = raw
+      .map(a => {
+        // description 開頭常逐字重複一次標題，去除重複部分避免卡片內容重疊
+        const reason = a.desc.startsWith(a.title) ? a.desc.slice(a.title.length).trim() : a.desc;
+        return { name: a.title, reason, pubDate: a.pubDate, link: a.link };
+      })
+      .sort((x, y) => new Date(y.pubDate) - new Date(x.pubDate));
+    const now = new Date();
+    const nowStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+    renderRecallStatus('homeRecallStatus', 'ok', nowStr);
+    renderRecallStatus('recallFullStatus', 'ok', nowStr);
+  } catch (e) {
+    _recallCache = [];
+    renderRecallStatus('homeRecallStatus', 'fail');
+    renderRecallStatus('recallFullStatus', 'fail');
+  }
+  renderHomeRecall();
+  renderRecallFull();
+}
+
 // ===== 首頁：下架召回 =====
 function renderHomeRecall() {
   const container = document.getElementById('homeRecallList');
-  RECALL_DATA.filter(r => r.status === 'open').slice(0, 4).forEach(r => {
+  container.innerHTML = '';
+  if (_recallCache === null) {
+    container.innerHTML = `<div class="recall-loading">正在連線衛福部食藥署取得最新下架／召回資訊…</div>`;
+    return;
+  }
+  if (_recallCache.length === 0) {
+    container.innerHTML = `<div class="recall-loading">目前查無最新下架／召回公告，或連線失敗。</div>`;
+    return;
+  }
+  _recallCache.slice(0, 4).forEach(r => {
     const div = document.createElement('div');
     div.className = 'recall-item';
     div.innerHTML = `
-      <div class="recall-name">${r.name}</div>
-      <div class="recall-brand">${r.brand}</div>
-      <div class="recall-reason">${r.reason}</div>
-      <div class="recall-date">公告日期：${r.date}</div>
+      <div class="recall-name">${escHtml(r.name)}</div>
+      <div class="recall-reason">${escHtml(r.reason)}</div>
+      <div class="recall-date">公告日期：${formatPubDate(r.pubDate)} ・ <a href="${escHtml(r.link)}" target="_blank" rel="noopener noreferrer">原文</a></div>
     `;
     container.appendChild(div);
   });
@@ -527,19 +582,26 @@ function filterTips() {
   renderTips(activeTipCat);
 }
 
-// ===== 下架召回 =====
+// ===== 下架召回全部清單 =====
 function renderRecallFull() {
   const container = document.getElementById('recallFullList');
-  RECALL_DATA.forEach(r => {
+  container.innerHTML = '';
+  if (_recallCache === null) {
+    container.innerHTML = `<div class="recall-loading">正在連線衛福部食藥署取得最新下架／召回資訊…</div>`;
+    return;
+  }
+  if (_recallCache.length === 0) {
+    container.innerHTML = `<div class="recall-loading">目前查無最新下架／召回公告，或連線失敗，請至<a href="https://www.fda.gov.tw/TC/csmLight.aspx" target="_blank" rel="noopener noreferrer">食藥署官網</a>查詢。</div>`;
+    return;
+  }
+  _recallCache.forEach(r => {
     const card = document.createElement('div');
     card.className = 'recall-full-card';
     card.innerHTML = `
-      <div class="rf-name">${r.name}</div>
-      <div class="rf-row"><strong>業者：</strong>${r.brand}</div>
-      <div class="rf-row"><strong>原因：</strong>${r.reason}</div>
-      <div class="rf-row"><strong>批次：</strong>${r.batch}</div>
-      <div class="rf-row"><strong>公告日期：</strong>${r.date}</div>
-      <span class="rf-status ${r.status}">${r.status === 'open' ? '處理中' : '已結案'}</span>
+      <div class="rf-name">${escHtml(r.name)}</div>
+      <div class="rf-row">${escHtml(r.reason)}</div>
+      <div class="rf-row"><strong>公告日期：</strong>${formatPubDate(r.pubDate)}</div>
+      <a class="rf-link" href="${escHtml(r.link)}" target="_blank" rel="noopener noreferrer">查看食藥署公告原文 &rsaquo;</a>
     `;
     container.appendChild(card);
   });
@@ -943,7 +1005,21 @@ function closeLiveNews() {
 }
 
 function stripHtml(html) {
-  return (html || '').replace(/<!\[CDATA\[|\]\]>/g, '').replace(/<[^>]+>/g, '').replace(/&[a-z#\d]+;/gi, ' ').replace(/\s+/g, ' ').trim();
+  return (html || '')
+    // 先解碼常見跳脫字元，部分來源（如食藥署RSS）會把 CDATA/標籤整個跳脫成文字
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;|&apos;/g, "'")
+    .replace(/&amp;/g, '&')
+    .replace(/<!\[CDATA\[|\]\]>/g, '')
+    .replace(/<style[\s\S]*?<\/style>/gi, '')
+    .replace(/<script[\s\S]*?<\/script>/gi, '')
+    .replace(/<!--[\s\S]*?-->/g, '')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&[a-z#\d]+;/gi, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
 function escHtml(str) {
