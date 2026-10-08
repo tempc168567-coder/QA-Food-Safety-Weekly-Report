@@ -4,17 +4,13 @@ document.addEventListener('DOMContentLoaded', () => {
   initNav();
   renderMarquee();
   renderLatestNews();
-  renderInspectionSummary();
   renderTipCard();
   renderHomeRecall();
   renderSourceDirectory();
   renderNewsGrid();
   initCatFilterBtns();
   initSourceFilterBtns();
-  renderInspectionTable();
-  initInspectionFilters();
   initBorder();
-  drawCharts();
   renderTips('all');
   renderTipCategories();
   renderRecallFull();
@@ -100,20 +96,6 @@ function renderLatestNews() {
     `;
     li.onclick = () => goPage('news');
     ul.appendChild(li);
-  });
-}
-
-// ===== 首頁：稽查快報 =====
-function renderInspectionSummary() {
-  const container = document.getElementById('inspectionSummary');
-  INSPECTION_DATA.slice(0, 5).forEach(r => {
-    const div = document.createElement('div');
-    div.className = 'insp-item';
-    div.innerHTML = `
-      <span>${r.name}</span>
-      <span class="badge badge-${r.result}">${resultLabel(r.result)}</span>
-    `;
-    container.appendChild(div);
   });
 }
 
@@ -314,46 +296,6 @@ function initSourceFilterBtns() {
   };
 }
 
-// ===== 稽查報告 =====
-function renderInspectionTable() {
-  const tbody = document.getElementById('inspectionBody');
-  const year  = document.getElementById('inspectionYear')?.value  || 'all';
-  const month = document.getElementById('inspectionMonth')?.value || 'all';
-  const type  = document.getElementById('inspectionType')?.value  || 'all';
-
-  const list = INSPECTION_DATA.filter(r => {
-    const [y, m] = r.date.split('-');
-    const matchY = year  === 'all' || y === year;
-    const matchM = month === 'all' || parseInt(m, 10) === parseInt(month, 10);
-    const matchT = type  === 'all' || r.type === type;
-    return matchY && matchM && matchT;
-  });
-
-  tbody.innerHTML = '';
-  if (list.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#a0aec0;padding:24px">無符合條件的稽查記錄</td></tr>';
-    return;
-  }
-  list.forEach(r => {
-    const tr = document.createElement('tr');
-    tr.innerHTML = `
-      <td>${r.date}</td>
-      <td>${r.name}</td>
-      <td>${typeLabel(r.type)}</td>
-      <td>${r.items}</td>
-      <td><span class="badge badge-${r.result}">${resultLabel(r.result)}</span></td>
-      <td>${r.action}</td>
-    `;
-    tbody.appendChild(tr);
-  });
-}
-
-function initInspectionFilters() {
-  ['inspectionYear', 'inspectionMonth', 'inspectionType'].forEach(id => {
-    document.getElementById(id)?.addEventListener('change', renderInspectionTable);
-  });
-}
-
 // ===== 邊境查驗 =====
 function initBorder() {
   const monthSel = document.getElementById('borderMonth');
@@ -440,126 +382,6 @@ function renderBorderTable() {
       <td class="bt-std">${escHtml(r.standard)}</td>
     `;
     tbody.appendChild(tr);
-  });
-}
-
-// ===== 圖表 =====
-function drawCharts() {
-  drawPassChart();
-  drawTrendChart();
-}
-
-function drawPassChart() {
-  const canvas = document.getElementById('passChart');
-  const ctx = canvas.getContext('2d');
-  const data = [
-    { label: '餐廳/小吃', pass: 88, color: '#38a169' },
-    { label: '食品工廠', pass: 94, color: '#3182ce' },
-    { label: '傳統市場', pass: 91, color: '#d69e2e' },
-    { label: '超市/量販', pass: 97, color: '#805ad5' },
-  ];
-  const barH = 36, gap = 16, padL = 90, padR = 60, padT = 20;
-  canvas.height = data.length * (barH + gap) + padT + 20;
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-  const maxW = canvas.width - padL - padR;
-  data.forEach((d, i) => {
-    const y = padT + i * (barH + gap);
-    // label
-    ctx.fillStyle = '#4a5568';
-    ctx.font = '13px sans-serif';
-    ctx.textAlign = 'right';
-    ctx.fillText(d.label, padL - 8, y + barH / 2 + 5);
-    // bg bar
-    ctx.fillStyle = '#edf2f7';
-    ctx.beginPath();
-    ctx.roundRect(padL, y, maxW, barH, 6);
-    ctx.fill();
-    // fill bar
-    const fillW = maxW * d.pass / 100;
-    ctx.fillStyle = d.color;
-    ctx.beginPath();
-    ctx.roundRect(padL, y, fillW, barH, 6);
-    ctx.fill();
-    // value
-    ctx.fillStyle = '#fff';
-    ctx.textAlign = 'right';
-    ctx.font = 'bold 13px sans-serif';
-    ctx.fillText(d.pass + '%', padL + fillW - 8, y + barH / 2 + 5);
-  });
-}
-
-function drawTrendChart() {
-  const canvas = document.getElementById('trendChart');
-  const ctx = canvas.getContext('2d');
-  const labels = ['1月','2月','3月','4月','5月','6月'];
-  const values = [180, 210, 195, 248, 0, 0];
-  const padL = 40, padR = 20, padT = 20, padB = 30;
-  const W = canvas.width - padL - padR;
-  const H = canvas.height - padT - padB;
-  const maxV = 300;
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-  // grid
-  ctx.strokeStyle = '#edf2f7';
-  ctx.lineWidth = 1;
-  [0, 0.25, 0.5, 0.75, 1].forEach(t => {
-    const y = padT + H * (1 - t);
-    ctx.beginPath(); ctx.moveTo(padL, y); ctx.lineTo(padL + W, y); ctx.stroke();
-    ctx.fillStyle = '#a0aec0';
-    ctx.font = '11px sans-serif';
-    ctx.textAlign = 'right';
-    ctx.fillText(Math.round(maxV * t), padL - 4, y + 4);
-  });
-
-  // 計算所有點座標
-  const pts = values.map((v, i) => ({
-    x: padL + (W / (labels.length - 1)) * i,
-    y: padT + H * (1 - v / maxV),
-  }));
-
-  // 只取有資料（非0）的點
-  const validPts = pts.filter((_, i) => values[i] > 0);
-
-  // FIX #2：折線只連有資料的點
-  if (validPts.length > 0) {
-    ctx.strokeStyle = '#38a169';
-    ctx.lineWidth = 2.5;
-    ctx.lineJoin = 'round';
-    ctx.beginPath();
-    validPts.forEach((p, i) => {
-      i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y);
-    });
-    ctx.stroke();
-
-    // FIX #2：fill 區域正確封閉：左下 → 各有效點 → 右下 → 閉合
-    ctx.fillStyle = 'rgba(56,161,105,.12)';
-    ctx.beginPath();
-    ctx.moveTo(validPts[0].x, padT + H);                       // 左下基準
-    validPts.forEach(p => ctx.lineTo(p.x, p.y));               // 沿折線頂部
-    ctx.lineTo(validPts[validPts.length - 1].x, padT + H);     // 右下基準
-    ctx.closePath();
-    ctx.fill();
-  }
-
-  // dots & labels（僅有資料的點）
-  pts.forEach((p, i) => {
-    if (values[i] === 0) return;
-    ctx.beginPath();
-    ctx.arc(p.x, p.y, 4, 0, Math.PI * 2);
-    ctx.fillStyle = '#38a169'; ctx.fill();
-    ctx.fillStyle = '#2d3748';
-    ctx.font = 'bold 11px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText(values[i], p.x, p.y - 8);
-  });
-
-  // x labels（全部月份都顯示）
-  ctx.fillStyle = '#718096';
-  ctx.font = '12px sans-serif';
-  labels.forEach((l, i) => {
-    const x = padL + (W / (labels.length - 1)) * i;
-    ctx.textAlign = 'center';
-    ctx.fillText(l, x, padT + H + 18);
   });
 }
 
@@ -685,12 +507,6 @@ async function submitForm(e) {
 // ===== 輔助函數 =====
 function catLabel(cat) {
   return { domestic:'國內', international:'國際', policy:'政策法規' }[cat] || cat;
-}
-function resultLabel(r) {
-  return { pass:'合格', warn:'警告', fail:'不合格' }[r] || r;
-}
-function typeLabel(t) {
-  return { restaurant:'餐廳/小吃', factory:'食品工廠', market:'傳統市場', supermarket:'超市/量販' }[t] || t;
 }
 
 // ===== 即時抓取近7日食安新聞 =====

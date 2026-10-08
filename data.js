@@ -178,18 +178,6 @@ const NEWS_DATA = [
   },
 ];
 
-// ===== 稽查報告資料 =====
-const INSPECTION_DATA = [
-  { date:'2026-04-28', name:'幸福小吃部', type:'restaurant', items:'衛生環境、食材溫度', result:'pass', action:'無' },
-  { date:'2026-04-27', name:'新鮮生機股份有限公司', type:'factory', items:'農藥殘留、添加物', result:'warn', action:'限期改善' },
-  { date:'2026-04-26', name:'台北東門市場', type:'market', items:'生熟食分離、溫控', result:'pass', action:'無' },
-  { date:'2026-04-25', name:'大潤發中和店', type:'supermarket', items:'標示查核、效期管理', result:'warn', action:'限期改善' },
-  { date:'2026-04-24', name:'美味廚坊餐廳', type:'restaurant', items:'廚房衛生、員工健康', result:'pass', action:'無' },
-  { date:'2026-04-23', name:'金農食品股份有限公司', type:'factory', items:'防腐劑殘留、重金屬', result:'fail', action:'停業改善+罰鍰' },
-  { date:'2026-04-22', name:'南門市場', type:'market', items:'生鮮食材保存溫度', result:'pass', action:'無' },
-  { date:'2026-04-21', name:'全聯福利中心士林店', type:'supermarket', items:'效期標示、冷藏溫度', result:'pass', action:'無' },
-];
-
 // ===== 食安知識資料 =====
 const TIPS_DATA = [
   {

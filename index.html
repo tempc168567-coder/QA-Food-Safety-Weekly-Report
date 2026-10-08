@@ -22,7 +22,6 @@
         <ul>
           <li><a href="#" class="active" data-page="home">首頁</a></li>
           <li><a href="#" data-page="news">食安新聞</a></li>
-          <li><a href="#" data-page="inspection">稽查報告</a></li>
           <li><a href="#" data-page="border">邊境查驗</a></li>
           <li><a href="#" data-page="tips">食安知識</a></li>
           <li><a href="#" data-page="recall">下架召回</a></li>
@@ -68,13 +67,6 @@
           <div class="section-header"><span class="dot red"></span>最新食安訊息</div>
           <ul class="news-list" id="latestNewsList"></ul>
           <button class="more-btn" onclick="goPage('news')">查看更多 &rsaquo;</button>
-        </div>
-
-        <!-- 中間：稽查快報 -->
-        <div class="card-section">
-          <div class="section-header"><span class="dot blue"></span>稽查快報</div>
-          <div class="inspection-summary" id="inspectionSummary"></div>
-          <button class="more-btn" onclick="goPage('inspection')">查看更多 &rsaquo;</button>
         </div>
 
         <!-- 右側：食安知識卡 -->
@@ -173,51 +165,6 @@
 
       <div class="news-result-count" id="newsResultCount"></div>
       <div class="news-grid" id="newsGrid"></div>
-    </section>
-
-    <!-- ===== 稽查報告 ===== -->
-    <section id="page-inspection" class="page">
-      <div class="page-title">稽查報告</div>
-      <div class="inspection-controls">
-        <select id="inspectionYear">
-          <option value="2026">2026年</option>
-          <option value="2025">2025年</option>
-        </select>
-        <select id="inspectionMonth">
-          <option value="all">全部月份</option>
-          <option value="1">1月</option><option value="2">2月</option>
-          <option value="3">3月</option><option value="4">4月</option>
-          <option value="5">5月</option><option value="6">6月</option>
-        </select>
-        <select id="inspectionType">
-          <option value="all">全部類別</option>
-          <option value="restaurant">餐廳/小吃</option>
-          <option value="factory">食品工廠</option>
-          <option value="market">傳統市場</option>
-          <option value="supermarket">超市/量販</option>
-        </select>
-      </div>
-      <div class="inspection-table-wrapper">
-        <table class="inspection-table" id="inspectionTable">
-          <thead>
-            <tr>
-              <th>稽查日期</th><th>業者名稱</th><th>類別</th>
-              <th>稽查項目</th><th>結果</th><th>處分</th>
-            </tr>
-          </thead>
-          <tbody id="inspectionBody"></tbody>
-        </table>
-      </div>
-      <div class="chart-row">
-        <div class="chart-box">
-          <div class="chart-title">各類業者合格率</div>
-          <canvas id="passChart" width="340" height="220"></canvas>
-        </div>
-        <div class="chart-box">
-          <div class="chart-title">月份稽查件數趨勢</div>
-          <canvas id="trendChart" width="340" height="220"></canvas>
-        </div>
-      </div>
     </section>
 
     <!-- ===== 邊境查驗 ===== -->
@@ -384,9 +331,8 @@
       <div class="page-title">網站地圖</div>
       <div class="recall-source-box legal-box">
         <ul class="sitemap-list">
-          <li><a href="#" onclick="goPage('home')">首頁</a> — 食安統計總覽、最新訊息、稽查快報、食安知識精選</li>
+          <li><a href="#" onclick="goPage('home')">首頁</a> — 食安統計總覽、最新訊息、食安知識精選</li>
           <li><a href="#" onclick="goPage('news')">食安新聞</a> — 國內外食安新聞彙整，支援即時抓取、關鍵字搜尋與來源篩選</li>
-          <li><a href="#" onclick="goPage('inspection')">稽查報告</a> — 業者稽查紀錄查詢，可依年度、月份、類別篩選</li>
           <li><a href="#" onclick="goPage('border')">邊境查驗</a> — 輸入食品邊境查驗不符合資訊，資料來源為衛福部食藥署</li>
           <li><a href="#" onclick="goPage('tips')">食安知識</a> — 食品安全衛生知識庫，依主題分類</li>
           <li><a href="#" onclick="goPage('recall')">下架召回</a> — 下架／召回公告彙整，含即時連線食藥署資訊</li>
