@@ -846,6 +846,26 @@ nav a:hover, nav a.active {
   margin-bottom: 10px;
 }
 .recall-source-box > p { color: #4a5568; margin-bottom: 14px; }
+
+/* ===== Legal / static info pages (privacy, accessibility, sitemap) ===== */
+.legal-box h3 {
+  font-size: .95rem;
+  color: #1a6b3c;
+  margin: 18px 0 6px;
+}
+.legal-box h3:first-child { margin-top: 0; }
+.legal-box ul { margin: 0 0 14px; padding-left: 1.2em; color: #4a5568; }
+.legal-box ul li { margin-bottom: 6px; }
+.sitemap-list { list-style: none; padding: 0; display: flex; flex-direction: column; gap: 12px; }
+.sitemap-list li { color: #4a5568; }
+.sitemap-list a {
+  font-weight: 700;
+  color: #2b6cb0;
+  text-decoration: none;
+  margin-right: 6px;
+}
+.sitemap-list a:hover { text-decoration: underline; }
+
 .rsb-list {
   list-style: none;
   display: flex;

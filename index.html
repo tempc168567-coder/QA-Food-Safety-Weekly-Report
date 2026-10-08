@@ -344,6 +344,57 @@
       </div>
     </section>
 
+    <!-- ===== 隱私政策 ===== -->
+    <section id="page-privacy" class="page">
+      <div class="page-title">隱私政策</div>
+      <div class="recall-source-box legal-box">
+        <h3>資料蒐集範圍</h3>
+        <p>本網站（品保處安心食報）僅在您透過「聯絡我們」頁面的線上意見回饋表單主動填寫時，蒐集您提供的姓名、電子信箱與訊息內容，用途僅限於回覆您的詢問或申訴，不會用於其他目的。表單內容會透過第三方表單服務（Formspree）轉送至品保處信箱，不會另外建立資料庫留存。</p>
+
+        <h3>Cookie 與追蹤技術</h3>
+        <p>本網站不使用 Cookie、不進行任何使用者行為追蹤，也沒有安裝網站流量分析工具，不會記錄您的瀏覽紀錄或裝置識別資訊。</p>
+
+        <h3>第三方資料來源</h3>
+        <p>本網站「食安新聞」「下架召回」「邊境查驗」等頁面會由您的瀏覽器即時連線至政府機關公開資料（如衛生福利部食品藥物管理署）及新聞媒體 RSS 來源，以顯示最新公開資訊。這些連線請求由您的瀏覽器直接發出，本網站不會蒐集、記錄或轉傳您的個人資訊給上述來源。</p>
+
+        <h3>資料安全與聯絡方式</h3>
+        <p>若您對個人資料的蒐集、使用有任何疑問，或希望更正、刪除您先前透過表單提供的資料，請透過「聯絡我們」頁面所列方式與品保處聯繫。</p>
+        <p class="rsb-note">&#9432; 本頁內容如有修訂，將於本頁更新，不另行通知。</p>
+      </div>
+    </section>
+
+    <!-- ===== 無障礙說明 ===== -->
+    <section id="page-accessibility" class="page">
+      <div class="page-title">網站無障礙說明</div>
+      <div class="recall-source-box legal-box">
+        <p>品保處安心食報致力於提供所有使用者（含身心障礙者）平等取用網站資訊的環境，本網站參考<strong>網頁無障礙網站設計原則（WCAG 2.1）AA 等級</strong>原則進行建置，包含：</p>
+        <ul>
+          <li>頁面採用合理的標題階層與語意化標籤，利於螢幕報讀軟體辨識</li>
+          <li>文字與背景具備足夠對比度，並支援瀏覽器縮放功能</li>
+          <li>版面採響應式設計，可於桌機、平板、手機等不同裝置瀏覽</li>
+          <li>表單欄位皆附有對應文字說明</li>
+        </ul>
+        <p>本網站尚未經第三方無障礙檢測單位完整驗證，若您在使用過程中遇到任何無障礙相關問題（例如螢幕報讀軟體無法正確讀取、鍵盤操作障礙等），歡迎透過「聯絡我們」頁面與品保處聯繫，我們會儘速檢視並改善。</p>
+        <p class="rsb-note">&#9432; 建議使用近期版本之 Chrome、Edge、Firefox 或 Safari 瀏覽器，以獲得最佳瀏覽體驗。</p>
+      </div>
+    </section>
+
+    <!-- ===== 網站地圖 ===== -->
+    <section id="page-sitemap" class="page">
+      <div class="page-title">網站地圖</div>
+      <div class="recall-source-box legal-box">
+        <ul class="sitemap-list">
+          <li><a href="#" onclick="goPage('home')">首頁</a> — 食安統計總覽、最新訊息、稽查快報、食安知識精選</li>
+          <li><a href="#" onclick="goPage('news')">食安新聞</a> — 國內外食安新聞彙整，支援即時抓取、關鍵字搜尋與來源篩選</li>
+          <li><a href="#" onclick="goPage('inspection')">稽查報告</a> — 業者稽查紀錄查詢，可依年度、月份、類別篩選</li>
+          <li><a href="#" onclick="goPage('border')">邊境查驗</a> — 輸入食品邊境查驗不符合資訊，資料來源為衛福部食藥署</li>
+          <li><a href="#" onclick="goPage('tips')">食安知識</a> — 食品安全衛生知識庫，依主題分類</li>
+          <li><a href="#" onclick="goPage('recall')">下架召回</a> — 下架／召回公告彙整，含即時連線食藥署資訊</li>
+          <li><a href="#" onclick="goPage('contact')">聯絡我們</a> — 品保處聯絡資訊與線上意見回饋表單</li>
+        </ul>
+      </div>
+    </section>
+
   </main>
 
   <!-- 頁尾 -->
@@ -354,10 +405,10 @@
         本網站資訊僅供參考，正式法律效力以公告為準。
       </div>
       <div class="footer-links">
-        <a href="#">隱私政策</a>
-        <a href="#">無障礙說明</a>
-        <a href="#">網站地圖</a>
-        <a href="#">政府資料開放平臺</a>
+        <a href="#" onclick="goPage('privacy')">隱私政策</a>
+        <a href="#" onclick="goPage('accessibility')">無障礙說明</a>
+        <a href="#" onclick="goPage('sitemap')">網站地圖</a>
+        <a href="https://data.gov.tw/" target="_blank" rel="noopener noreferrer">政府資料開放平臺</a>
       </div>
       <div class="footer-copy">&copy; 2026 品保處 版權所有</div>
     </div>
