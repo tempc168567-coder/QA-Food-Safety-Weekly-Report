@@ -232,6 +232,13 @@ const BORDER_CAT_COLORS = {
   '真菌毒素': '#ad1457', '保水劑': '#00695c', '食品添加物': '#7b1fa2', '防腐劑/抗氧化劑': '#5e35b1',
 };
 const BORDER_DATA = [
+  { month:10, date:"2026-10-13", country:"中國大陸", item:"白蘿蔔", category:"農藥殘留", violation:"檢出殘留農藥芬普尼0.002 ppm", standard:"依據「農藥殘留容許量標準」，芬普尼以其他*0.001 ppm為法規容許值，不符合食品安全衛生管理法第15條第1項第5款規定。" },
+  { month:10, date:"2026-10-13", country:"印尼", item:"青江菜", category:"農藥殘留", violation:"檢出殘留農藥三落松0.09 ppm", standard:"依據「農藥殘留容許量標準」，三落松以其他*0.01 ppm為法規容許值，不符合食品安全衛生管理法第15條第1項第5款規定。" },
+  { month:10, date:"2026-10-13", country:"印尼", item:"大白菜", category:"農藥殘留", violation:"檢出殘留農藥Chlorbenzuron 0.01 ppm", standard:"依據「農藥殘留容許量標準」，Chlorbenzuron為不得檢出，應低於檢測方法之定量極限0.01 ppm，不符合食品安全衛生管理法第15條第1項第5款規定。" },
+  { month:10, date:"2026-10-13", country:"中國大陸", item:"涼粉草（仙草）", category:"農藥殘留", violation:"檢出殘留農藥三賽唑0.08 ppm", standard:"依據「農藥殘留容許量標準」，三賽唑為不得檢出，應低於檢測方法之定量極限0.05 ppm，不符合食品安全衛生管理法第15條第1項第5款規定。" },
+  { month:10, date:"2026-10-13", country:"韓國", item:"哈密瓜", category:"農藥殘留", violation:"檢出殘留農藥Imicyafos 0.03 ppm", standard:"依據「農藥殘留容許量標準」，Imicyafos於洋香瓜類容許量為0.02 ppm，不符合食品安全衛生管理法第15條第1項第5款規定。" },
+  { month:10, date:"2026-10-13", country:"越南", item:"高麗菜", category:"重金屬", violation:"檢出鎘0.06 mg/kg", standard:"依據「食品中污染物質及毒素衛生標準」，鎘於蕓薹屬類限量為0.05 mg/kg，不符合食品安全衛生管理法第17條規定。" },
+  { month:10, date:"2026-10-13", country:"中國大陸", item:"苦瓜乾", category:"農藥殘留", violation:"檢出殘留農藥祿芬隆0.08 ppm", standard:"依據「農藥殘留容許量標準」，祿芬隆以其他*0.05 ppm為法規容許值，不符合食品安全衛生管理法第15條第1項第5款規定。" },
   { month:7, date:"2026-07-07", country:"印尼", item:"樹薯脆片", category:"甜味劑", violation:"檢出環己基（代）磺醯胺酸0.02 g/kg", standard:"依據「食品添加物使用範圍及限量暨規格標準」，案內產品非甜味劑環己基（代）磺醯胺酸鈉或環己基（代）磺醯胺酸鈣表列准用之食品範圍，不符合食品安全衛生管理法第18條第1項規定。" },
   { month:7, date:"2026-07-07", country:"印尼", item:"蒜味脆片", category:"甜味劑", violation:"檢出糖精0.26 g/kg", standard:"依據「食品添加物使用範圍及限量暨規格標準」，案內產品非甜味劑糖精或糖精鈉鹽表列准用之食品範圍，不符合食品安全衛生管理法第18條第1項規定。" },
   { month:7, date:"2026-07-07", country:"馬來西亞", item:"鮮小芥蘭菜", category:"農藥殘留", violation:"檢出殘留農藥滅芬諾5.35 ppm", standard:"依據「農藥殘留容許量標準」，滅芬諾以其他*0.01 ppm 為法規容許值，不符合食品安全衛生管理法第15條第1項第5款規定。" },
