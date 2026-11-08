@@ -3,7 +3,8 @@ document.addEventListener('DOMContentLoaded', () => {
   setHeaderDate();
   initNav();
   renderMarquee();
-  renderLatestNews();
+  renderLatestNews(); // 先顯示示範資料佔位，即時抓取完成後會被取代
+  fetchHomeLatestNews();
   renderTipCard();
   renderHomeRecall();
   renderSourceDirectory();
@@ -86,13 +87,41 @@ function renderMarquee() {
 }
 
 // ===== 首頁：最新消息 =====
+// 靜態示範資料（即時抓取失敗時的備援內容）
 function renderLatestNews() {
   const ul = document.getElementById('latestNewsList');
+  ul.innerHTML = '';
   NEWS_DATA.slice(0, 5).forEach(n => {
     const li = document.createElement('li');
     li.innerHTML = `
       <span class="news-cat cat-${n.cat}">${catLabel(n.cat)}</span>${n.title}
       <span class="news-date">${n.date}</span>
+    `;
+    li.onclick = () => goPage('news');
+    ul.appendChild(li);
+  });
+}
+
+// 即時抓取最新食安新聞，取代上方的靜態示範資料（與「食安新聞」頁共用同一組 RSS 抓取結果與快取）
+async function fetchHomeLatestNews() {
+  try {
+    const { allArticles } = await getLiveArticles();
+    renderLatestNewsLive(allArticles);
+  } catch {
+    // 即時抓取整組失敗（理論上 fetchAllRSS 內部已個別 catch，這裡是最後防線），保留靜態示範資料
+  }
+}
+
+function renderLatestNewsLive(articles) {
+  if (!articles.length) return; // 抓不到任何即時新聞時，維持畫面上已顯示的靜態示範資料
+  const ul = document.getElementById('latestNewsList');
+  ul.innerHTML = '';
+  articles.slice(0, 5).forEach(a => {
+    const region = SOURCES[a.source]?.region || 'domestic';
+    const li = document.createElement('li');
+    li.innerHTML = `
+      <span class="news-cat cat-${region}">${catLabel(region)}</span>${escHtml(a.title)}
+      <span class="news-date">${formatPubDate(a.pubDate)}</span>
     `;
     li.onclick = () => goPage('news');
     ul.appendChild(li);
@@ -718,6 +747,37 @@ let _liveCache = null;
 let _liveCacheAt = 0;
 const LIVE_CACHE_TTL = 30 * 1000; // 30秒防雙擊，「重新更新」按鈕可強制略過
 
+// 併發抓取全部 RSS_FEEDS 並回傳彙總結果，供首頁「最新食安訊息」與「食安新聞」頁的即時區塊共用（含快取）
+// onSourceResult(key, 'ok'|'fail', count) 為選用的進度回呼，用來更新「食安新聞」頁的來源狀態燈
+async function getLiveArticles(forceRefresh = false, onSourceResult) {
+  if (!forceRefresh && _liveCache && Date.now() - _liveCacheAt < LIVE_CACHE_TTL) {
+    return _liveCache;
+  }
+  const settled = await Promise.allSettled(
+    RSS_FEEDS.map(async feed => {
+      try {
+        const articles = await fetchSingleRSS(feed);
+        onSourceResult && onSourceResult(feed.key, 'ok', articles.length);
+        return { ok: true, articles };
+      } catch {
+        onSourceResult && onSourceResult(feed.key, 'fail', 0);
+        return { ok: false, articles: [] };
+      }
+    })
+  );
+  const results     = settled.map(r => r.value || { ok: false, articles: [] });
+  const allArticles = results
+    .flatMap(r => r.articles)
+    .sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate));
+  const hitSources   = results.filter(r => r.ok && r.articles.length > 0).length;
+  const failSources  = results.filter(r => !r.ok).length;
+  const emptySources = results.filter(r => r.ok && r.articles.length === 0).length;
+  const result = { allArticles, hitSources, failSources, emptySources };
+  _liveCache = result;
+  _liveCacheAt = Date.now();
+  return result;
+}
+
 function renderLiveCards(articles, grid, emptyEl) {
   grid.innerHTML = '';
   emptyEl.style.display = 'none';
@@ -769,58 +829,36 @@ async function fetchLiveNews(forceRefresh = false) {
 
   section.style.display = 'block';
 
-  // 未強制更新時，30秒內使用快取（防止連續快速點擊）
-  if (!forceRefresh && _liveCache && Date.now() - _liveCacheAt < LIVE_CACHE_TTL) {
-    const { articles, titleText, timeText } = _liveCache;
-    titleEl.textContent = titleText;
-    timeEl.textContent = timeText + '（快取）';
+  // 未強制更新時，30秒內使用快取（防止連續快速點擊；快取與首頁「最新食安訊息」共用）
+  const isCacheHit = !forceRefresh && _liveCache && Date.now() - _liveCacheAt < LIVE_CACHE_TTL;
+
+  if (!isCacheHit) {
+    // Loading state
+    btn.disabled = true;
+    btn.querySelector('.lf-icon').style.display = 'none';
+    btn.querySelector('.lf-spinner').style.display = 'inline-block';
+    btn.querySelector('.lf-text').textContent = '抓取中…';
+    grid.innerHTML = '';
+    emptyEl.style.display = 'none';
+    titleEl.textContent = '正在連線抓取…';
+    timeEl.textContent = '';
+
+    // Build status chips
+    statusEl.innerHTML = RSS_FEEDS.map(f => {
+      const s = SOURCES[f.key] || {};
+      return `<div class="src-chip" id="chip-${f.key}">
+        <span class="chip-dot loading"></span>${s.short || f.key}
+      </div>`;
+    }).join('');
+  } else {
     statusEl.innerHTML = '';
-    renderLiveCards(articles, grid, emptyEl);
-    return;
   }
 
-  // Loading state
-  btn.disabled = true;
-  btn.querySelector('.lf-icon').style.display = 'none';
-  btn.querySelector('.lf-spinner').style.display = 'inline-block';
-  btn.querySelector('.lf-text').textContent = '抓取中…';
-  grid.innerHTML = '';
-  emptyEl.style.display = 'none';
-  titleEl.textContent = '正在連線抓取…';
-  timeEl.textContent = '';
+  // 若快取是首頁背景抓取留下的（未附帶 updateChip 進度），這裡就看不到逐一來源的狀態燈，僅能看到彙總結果
+  const { allArticles, hitSources, failSources, emptySources } =
+    await getLiveArticles(forceRefresh, isCacheHit ? undefined : updateChip);
 
-  // Build status chips
-  statusEl.innerHTML = RSS_FEEDS.map(f => {
-    const s = SOURCES[f.key] || {};
-    return `<div class="src-chip" id="chip-${f.key}">
-      <span class="chip-dot loading"></span>${s.short || f.key}
-    </div>`;
-  }).join('');
-
-  // Fetch all sources in parallel，回傳 {ok, articles} 以區分「連線失敗」vs「無食安新聞」
-  const settled = await Promise.allSettled(
-    RSS_FEEDS.map(async feed => {
-      try {
-        const articles = await fetchSingleRSS(feed);
-        updateChip(feed.key, 'ok', articles.length);
-        return { ok: true, articles };
-      } catch {
-        updateChip(feed.key, 'fail', 0);
-        return { ok: false, articles: [] };
-      }
-    })
-  );
-
-  const results     = settled.map(r => r.value || { ok: false, articles: [] });
-  const allArticles = results
-    .flatMap(r => r.articles)
-    .sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate));
-
-  const hitSources   = results.filter(r => r.ok && r.articles.length > 0).length;
-  const failSources  = results.filter(r => !r.ok).length;
-  const emptySources = results.filter(r => r.ok && r.articles.length === 0).length;
-
-  const now = new Date();
+  const now = new Date(_liveCacheAt);
   const nowStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
 
   const titleText = allArticles.length > 0
@@ -830,14 +868,10 @@ async function fetchLiveNews(forceRefresh = false) {
   const notes = [];
   if (failSources  > 0) notes.push(`${failSources} 個來源連線失敗`);
   if (emptySources > 0) notes.push(`${emptySources} 個來源本週無食安新聞`);
-  const timeText = `更新：${nowStr}${notes.length ? '　' + notes.join('，') : ''}`;
+  const timeText = `更新：${nowStr}${notes.length ? '　' + notes.join('，') : ''}${isCacheHit ? '（快取）' : ''}`;
 
   titleEl.textContent = titleText;
   timeEl.textContent = timeText;
-
-  // 儲存快取
-  _liveCache = { articles: allArticles, titleText, timeText };
-  _liveCacheAt = Date.now();
 
   renderLiveCards(allArticles, grid, emptyEl);
 
